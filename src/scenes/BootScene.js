@@ -30,45 +30,17 @@ export class BootScene extends Phaser.Scene {
       loadingText.destroy();
     });
 
-    // Generate placeholder graphics
+    // Load monkey sprites
+    this.load.svg('monkey', 'assets/monkey-0.svg', { width: 64, height: 78 });
+    this.load.svg('monkey-walk-1', 'assets/monkey-1.svg', { width: 64, height: 78 });
+    this.load.svg('monkey-walk-2', 'assets/monkey-2.svg', { width: 64, height: 78 });
+    this.load.svg('monkey-jump', 'assets/monkey-3.svg', { width: 64, height: 78 });
+
+    // Generate placeholder graphics for platforms and coins
     this.generatePlaceholderGraphics();
   }
 
   generatePlaceholderGraphics() {
-    // Generate monkey sprite
-    const monkeyGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-
-    // Body (orange rectangle)
-    monkeyGraphics.fillStyle(COLORS.MONKEY_ORANGE);
-    monkeyGraphics.fillRoundedRect(4, 8, PLAYER.WIDTH - 8, PLAYER.HEIGHT - 16, 8);
-
-    // Face (lighter belly area)
-    monkeyGraphics.fillStyle(0xFFCC80);
-    monkeyGraphics.fillRoundedRect(12, 20, PLAYER.WIDTH - 24, 30, 6);
-
-    // Eyes
-    monkeyGraphics.fillStyle(0x000000);
-    monkeyGraphics.fillCircle(16, 24, 4);
-    monkeyGraphics.fillCircle(32, 24, 4);
-
-    // Eye whites
-    monkeyGraphics.fillStyle(0xFFFFFF);
-    monkeyGraphics.fillCircle(17, 23, 2);
-    monkeyGraphics.fillCircle(33, 23, 2);
-
-    // Smile
-    monkeyGraphics.lineStyle(2, 0x000000);
-    monkeyGraphics.beginPath();
-    monkeyGraphics.arc(24, 35, 8, 0.2, Math.PI - 0.2);
-    monkeyGraphics.strokePath();
-
-    // Ears
-    monkeyGraphics.fillStyle(COLORS.MONKEY_BROWN);
-    monkeyGraphics.fillCircle(4, 20, 8);
-    monkeyGraphics.fillCircle(44, 20, 8);
-
-    monkeyGraphics.generateTexture('monkey', PLAYER.WIDTH, PLAYER.HEIGHT);
-    monkeyGraphics.destroy();
 
     // Generate coin sprite
     const coinGraphics = this.make.graphics({ x: 0, y: 0, add: false });

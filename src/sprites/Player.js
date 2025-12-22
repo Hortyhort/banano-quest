@@ -10,12 +10,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Physics settings
     this.body.setCollideWorldBounds(true);
-    this.body.setSize(PLAYER.WIDTH - 16, PLAYER.HEIGHT - 8);
-    this.body.setOffset(8, 8);
+    this.body.setSize(40, 60);
+    this.body.setOffset(12, 18);
 
     // Movement state
     this.isJumping = false;
-    this.canDoubleJump = false;
+    this.walkFrame = 0;
+    this.walkTimer = 0;
 
     // Setup controls
     this.cursors = scene.input.keyboard.createCursorKeys();
@@ -70,12 +71,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.spaceWasPressed = jumpPressed;
 
-    // Visual feedback - slight rotation when moving
-    if (this.body.velocity.x !== 0 && onGround) {
-      const wobble = Math.sin(this.scene.time.now * 0.02) * 2;
-      this.setRotation(Phaser.Math.DegToRad(wobble));
+    // Update sprite based on state
+    this.updateSprite(onGround);
+  }
+
+  updateSprite(onGround) {
+    // Jumping sprite
+    if (!onGround) {
+      this.setTexture('monkey-jump');
+      return;
+    }
+
+    // Walking animation
+    if (this.body.velocity.x !== 0) {
+      this.walkTimer += 16; // Approximate frame time
+      if (this.walkTimer > 150) { // Switch frame every 150ms
+        this.walkTimer = 0;
+        this.walkFrame = (this.walkFrame + 1) % 2;
+      }
+      this.setTexture(this.walkFrame === 0 ? 'monkey-walk-1' : 'monkey-walk-2');
     } else {
-      this.setRotation(0);
+      // Idle
+      this.setTexture('monkey');
+      this.walkTimer = 0;
+      this.walkFrame = 0;
     }
   }
 

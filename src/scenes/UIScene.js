@@ -14,6 +14,9 @@ export class UIScene extends Phaser.Scene {
     // Score display with coin icon
     this.createScoreDisplay();
 
+    // High score display
+    this.createHighScoreDisplay();
+
     // Level display
     this.createLevelDisplay();
 
@@ -21,6 +24,7 @@ export class UIScene extends Phaser.Scene {
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
       this.gameScene.events.on('updateLevel', this.updateLevel, this);
+      this.gameScene.events.on('updateHighScore', this.updateHighScore, this);
     }
   }
 
@@ -48,6 +52,29 @@ export class UIScene extends Phaser.Scene {
       color: '#FFFFFF',
       stroke: '#000000',
       strokeThickness: 4
+    }).setOrigin(0, 0.5);
+  }
+
+  createHighScoreDisplay() {
+    // Background panel
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(210, 15, 160, 50, 10);
+
+    // Trophy icon (simple star shape)
+    const star = this.add.text(230, 40, '★', {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      color: '#FFD700'
+    }).setOrigin(0.5);
+
+    // High score text
+    this.highScoreText = this.add.text(255, 40, 'Best: 0', {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '20px',
+      color: '#FFD700',
+      stroke: '#000000',
+      strokeThickness: 3
     }).setOrigin(0, 0.5);
   }
 
@@ -85,6 +112,12 @@ export class UIScene extends Phaser.Scene {
   updateLevel(level) {
     if (this.levelText) {
       this.levelText.setText(`Level ${level}`);
+    }
+  }
+
+  updateHighScore(highScore) {
+    if (this.highScoreText) {
+      this.highScoreText.setText(`Best: ${highScore}`);
     }
   }
 }

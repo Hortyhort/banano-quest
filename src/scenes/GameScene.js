@@ -9,6 +9,7 @@ import {
 } from '../config/gameConfig.js';
 import { Player } from '../sprites/Player.js';
 import { Coin } from '../sprites/Coin.js';
+import { StorageService } from '../services/StorageService.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -54,9 +55,10 @@ export class GameScene extends Phaser.Scene {
     // Camera fade in
     this.cameras.main.fadeIn(500);
 
-    // Emit initial score
+    // Emit initial score and high score
     this.events.emit('updateScore', this.score);
     this.events.emit('updateLevel', this.level);
+    this.events.emit('updateHighScore', StorageService.getHighScore());
   }
 
   createBackground() {
@@ -169,6 +171,9 @@ export class GameScene extends Phaser.Scene {
     this.score += points;
     this.collectedCoins++;
 
+    // Track total coins collected (lifetime stat)
+    StorageService.addCoins(1);
+
     // Update UI
     this.events.emit('updateScore', this.score);
 
@@ -204,6 +209,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   levelComplete() {
+    // Check for new high score
+    const isNewHighScore = StorageService.setHighScore(this.score);
+    const highScore = StorageService.getHighScore();
+
     // Show completion message
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2,
@@ -222,7 +231,7 @@ export class GameScene extends Phaser.Scene {
 
     const completeText = this.add.text(
       GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 - 50,
+      GAME_HEIGHT / 2 - 80,
       'LEVEL COMPLETE!',
       {
         fontFamily: 'Arial Black, Arial',
@@ -232,6 +241,33 @@ export class GameScene extends Phaser.Scene {
         strokeThickness: 8
       }
     ).setOrigin(0.5).setAlpha(0);
+
+    // New high score celebration
+    if (isNewHighScore) {
+      const newHighText = this.add.text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 - 20,
+        'NEW HIGH SCORE!',
+        {
+          fontFamily: 'Arial Black, Arial',
+          fontSize: '32px',
+          color: '#00FF00',
+          stroke: '#000000',
+          strokeThickness: 4
+        }
+      ).setOrigin(0.5).setAlpha(0);
+
+      this.tweens.add({
+        targets: newHighText,
+        alpha: 1,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        duration: 300,
+        delay: 500,
+        yoyo: true,
+        repeat: 2
+      });
+    }
 
     const scoreText = this.add.text(
       GAME_WIDTH / 2,
@@ -246,9 +282,22 @@ export class GameScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setAlpha(0);
 
+    const highScoreText = this.add.text(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 + 75,
+      `High Score: ${highScore}`,
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#FFD700',
+        stroke: '#000000',
+        strokeThickness: 3
+      }
+    ).setOrigin(0.5).setAlpha(0);
+
     const continueText = this.add.text(
       GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 100,
+      GAME_HEIGHT / 2 + 130,
       'Press SPACE to play again',
       {
         fontFamily: 'Arial',
@@ -260,11 +309,14 @@ export class GameScene extends Phaser.Scene {
     ).setOrigin(0.5).setAlpha(0);
 
     this.tweens.add({
-      targets: [completeText, scoreText, continueText],
+      targets: [completeText, scoreText, highScoreText, continueText],
       alpha: 1,
       duration: 500,
       delay: 300
     });
+
+    // Update UI with new high score
+    this.events.emit('updateHighScore', highScore);
 
     // Wait for space to restart
     this.input.keyboard.once('keydown-SPACE', () => {

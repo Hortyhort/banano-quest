@@ -37,4 +37,62 @@ const config = {
 
 const game = new Phaser.Game(config);
 
+// --- App Lifecycle ---
+
+// Pause game when tab/app loses focus
+document.addEventListener('visibilitychange', () => {
+  if (!game.scene) return;
+
+  if (document.hidden) {
+    // Pause the game scene if it's active
+    const gameScene = game.scene.getScene('GameScene');
+    if (gameScene && gameScene.scene.isActive()) {
+      gameScene.scene.pause();
+      // Launch pause overlay if not already showing
+      const pauseScene = game.scene.getScene('PauseScene');
+      if (pauseScene && !pauseScene.scene.isActive()) {
+        gameScene.scene.launch('PauseScene');
+      }
+    }
+    // Suspend audio
+    if (game.sound && game.sound.context && game.sound.context.state === 'running') {
+      game.sound.context.suspend();
+    }
+  } else {
+    // Resume audio context
+    if (game.sound && game.sound.context && game.sound.context.state === 'suspended') {
+      game.sound.context.resume();
+    }
+  }
+});
+
+// Android back button → pause or go back to menu
+document.addEventListener('backbutton', () => {
+  if (!game.scene) return;
+
+  const gameScene = game.scene.getScene('GameScene');
+  if (gameScene && gameScene.scene.isActive()) {
+    // In-game: toggle pause
+    const pauseScene = game.scene.getScene('PauseScene');
+    if (pauseScene && pauseScene.scene.isActive()) {
+      pauseScene.scene.stop();
+      gameScene.scene.resume();
+    } else {
+      gameScene.scene.pause();
+      gameScene.scene.launch('PauseScene');
+    }
+    return;
+  }
+
+  // On sub-screens: go back to menu
+  const subScenes = ['LevelSelectScene', 'SettingsScene', 'AchievementsScene', 'StatsScene', 'SkinsScene'];
+  for (const key of subScenes) {
+    const s = game.scene.getScene(key);
+    if (s && s.scene.isActive()) {
+      s.scene.start('MenuScene');
+      return;
+    }
+  }
+});
+
 export default game;

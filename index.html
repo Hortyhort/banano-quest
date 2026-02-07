@@ -6,6 +6,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#FFEB3B">
+  <meta name="description" content="Jump, stomp, and collect Banano coins in this fast platformer!">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <title>Banano Quest</title>
   <style>
     * {
@@ -38,10 +43,131 @@
     #game-container canvas {
       touch-action: none;
     }
+
+    /* PWA install prompt */
+    #install-prompt {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #FFEB3B, #FF9800);
+      color: #3E2723;
+      padding: 12px 24px;
+      border-radius: 28px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 10000;
+      box-shadow: 0 4px 16px rgba(255, 152, 0, 0.4);
+      animation: slideUp 0.5s ease-out;
+      border: none;
+    }
+    #install-prompt:hover {
+      transform: translateX(-50%) scale(1.05);
+    }
+    @keyframes slideUp {
+      from { transform: translateX(-50%) translateY(80px); opacity: 0; }
+      to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    /* Portrait orientation overlay */
+    #orientation-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #1a1a2e;
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      color: #FFEB3B;
+      font-family: 'Arial Black', Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    #orientation-overlay .rotate-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      animation: rotateHint 2s ease-in-out infinite;
+    }
+    #orientation-overlay .rotate-text {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    #orientation-overlay .rotate-subtext {
+      font-size: 16px;
+      color: #aaa;
+      font-family: Arial, sans-serif;
+    }
+    @keyframes rotateHint {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(90deg); }
+      75% { transform: rotate(90deg); }
+    }
+    @media (orientation: portrait) and (max-width: 900px) {
+      #orientation-overlay {
+        display: flex !important;
+      }
+      #game-container {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
   <div id="game-container"></div>
+
+  <!-- Portrait orientation overlay -->
+  <div id="orientation-overlay">
+    <div class="rotate-icon">&#x1F4F1;</div>
+    <div class="rotate-text">Please Rotate Your Device</div>
+    <div class="rotate-subtext">Banano Quest plays best in landscape mode</div>
+  </div>
+
+  <!-- PWA install button -->
+  <button id="install-prompt">&#x1F4E5; Install Banano Quest</button>
+
+  <script>
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.warn('SW registration failed:', err));
+      });
+    }
+
+    // PWA install prompt
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('install-prompt');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      console.log('Install prompt result:', result.outcome);
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+
+    // Orientation lock (where supported)
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  </script>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

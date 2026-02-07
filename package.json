@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "generate-icons": "node scripts/generate-icons.js",
+    "cap:init": "npx cap init 'Banano Quest' com.bananoquest.app --web-dir dist",
+    "cap:add-android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android",
+    "cap:build": "npm run build && npx cap sync"
   },
   "dependencies": {
     "phaser": "^3.70.0"

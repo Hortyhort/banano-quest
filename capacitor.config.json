@@ -1,0 +1,28 @@
+{
+  "appId": "com.bananoquest.app",
+  "appName": "Banano Quest",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#1a1a2e"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#1a1a2e",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false,
+      "launchShowDuration": 1500
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#1a1a2e"
+    },
+    "Keyboard": {
+      "resize": "none"
+    }
+  }
+}

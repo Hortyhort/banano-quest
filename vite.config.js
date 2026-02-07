@@ -8,6 +8,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          phaser: ['phaser']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1500,
+    target: 'es2020',
+    minify: 'esbuild'
   }
 });

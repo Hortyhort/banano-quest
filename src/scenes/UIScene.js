@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, COLORS } from '../config/gameConfig.js';
+import { GAME_WIDTH } from '../config/gameConfig.js';
 
 export class UIScene extends Phaser.Scene {
   constructor() {
@@ -8,116 +8,154 @@ export class UIScene extends Phaser.Scene {
 
   init(data) {
     this.gameScene = data.gameScene;
+    this.currentLevel = data.level || 0;
+    this.currentLives = data.lives || 3;
+    this.totalLevels = data.totalLevels || 1;
   }
 
   create() {
-    // Score display with coin icon
     this.createScoreDisplay();
-
-    // High score display
     this.createHighScoreDisplay();
-
-    // Level display
     this.createLevelDisplay();
+    this.createLivesDisplay();
+    this.createComboDisplay();
+    this.createTimerDisplay();
 
-    // Listen for updates from GameScene
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
       this.gameScene.events.on('updateLevel', this.updateLevel, this);
       this.gameScene.events.on('updateHighScore', this.updateHighScore, this);
+      this.gameScene.events.on('updateLives', this.updateLives, this);
+      this.gameScene.events.on('updateCombo', this.updateCombo, this);
+      this.gameScene.events.on('updateTimer', this.updateTimer, this);
     }
   }
 
   createScoreDisplay() {
-    // Background panel
     const panel = this.add.graphics();
     panel.fillStyle(0x000000, 0.3);
     panel.fillRoundedRect(15, 15, 180, 50, 10);
 
-    // Coin icon
     const coinIcon = this.add.image(50, 40, 'coin').setScale(0.8);
-
-    // Animate coin
     this.tweens.add({
-      targets: coinIcon,
-      angle: 360,
-      duration: 3000,
-      repeat: -1
+      targets: coinIcon, angle: 360,
+      duration: 3000, repeat: -1
     });
 
-    // Score text
     this.scoreText = this.add.text(80, 40, '0', {
-      fontFamily: 'Arial Black, Arial',
-      fontSize: '28px',
-      color: '#FFFFFF',
-      stroke: '#000000',
-      strokeThickness: 4
+      fontFamily: 'Arial Black, Arial', fontSize: '28px',
+      color: '#FFFFFF', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0, 0.5);
   }
 
   createHighScoreDisplay() {
-    // Background panel
     const panel = this.add.graphics();
     panel.fillStyle(0x000000, 0.3);
     panel.fillRoundedRect(210, 15, 160, 50, 10);
 
-    // Trophy icon (simple star shape)
-    const star = this.add.text(230, 40, '★', {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      color: '#FFD700'
+    this.add.text(230, 40, '\u2605', {
+      fontFamily: 'Arial', fontSize: '24px', color: '#FFD700'
     }).setOrigin(0.5);
 
-    // High score text
     this.highScoreText = this.add.text(255, 40, 'Best: 0', {
-      fontFamily: 'Arial Black, Arial',
-      fontSize: '20px',
-      color: '#FFD700',
-      stroke: '#000000',
-      strokeThickness: 3
+      fontFamily: 'Arial Black, Arial', fontSize: '20px',
+      color: '#FFD700', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0, 0.5);
   }
 
   createLevelDisplay() {
-    // Background panel
     const panel = this.add.graphics();
     panel.fillStyle(0x000000, 0.3);
     panel.fillRoundedRect(GAME_WIDTH - 145, 15, 130, 50, 10);
 
-    // Level text
-    this.levelText = this.add.text(GAME_WIDTH - 80, 40, 'Level 1', {
-      fontFamily: 'Arial Black, Arial',
-      fontSize: '24px',
-      color: '#FFFFFF',
-      stroke: '#000000',
-      strokeThickness: 4
+    this.levelText = this.add.text(GAME_WIDTH - 80, 40, `Level ${this.currentLevel + 1}`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '24px',
+      color: '#FFFFFF', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5);
+  }
+
+  createLivesDisplay() {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(15, 75, 120, 40, 10);
+
+    this.livesText = this.add.text(30, 95, '', {
+      fontFamily: 'Arial', fontSize: '22px', color: '#FF5252'
+    }).setOrigin(0, 0.5);
+
+    this.updateLives(this.currentLives);
+  }
+
+  createComboDisplay() {
+    this.comboText = this.add.text(GAME_WIDTH / 2, 35, '', {
+      fontFamily: 'Arial Black, Arial', fontSize: '24px',
+      color: '#FF9800', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setAlpha(0);
+  }
+
+  createTimerDisplay() {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(GAME_WIDTH - 145, 75, 130, 40, 10);
+
+    this.timerText = this.add.text(GAME_WIDTH - 80, 95, '0s', {
+      fontFamily: 'Arial', fontSize: '20px',
+      color: '#B0BEC5', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
   }
 
   updateScore(score) {
     if (this.scoreText) {
-      // Animate score change
       this.tweens.add({
-        targets: this.scoreText,
-        scaleX: 1.3,
-        scaleY: 1.3,
-        duration: 100,
-        yoyo: true
+        targets: this.scoreText, scaleX: 1.3, scaleY: 1.3,
+        duration: 100, yoyo: true
       });
-
       this.scoreText.setText(score.toString());
     }
   }
 
   updateLevel(level) {
-    if (this.levelText) {
-      this.levelText.setText(`Level ${level}`);
-    }
+    if (this.levelText) this.levelText.setText(`Level ${level}`);
   }
 
   updateHighScore(highScore) {
-    if (this.highScoreText) {
-      this.highScoreText.setText(`Best: ${highScore}`);
+    if (this.highScoreText) this.highScoreText.setText(`Best: ${highScore}`);
+  }
+
+  updateLives(lives) {
+    if (this.livesText) {
+      this.livesText.setText('\u2764'.repeat(Math.max(0, lives)));
+      if (lives <= 1) {
+        this.tweens.add({
+          targets: this.livesText,
+          alpha: { from: 1, to: 0.4 }, duration: 300,
+          yoyo: true, repeat: 2
+        });
+      }
+    }
+  }
+
+  updateCombo(combo) {
+    if (!this.comboText) return;
+    if (combo >= 2) {
+      this.comboText.setText(`COMBO x${combo}!`);
+      this.comboText.setAlpha(1);
+      this.tweens.add({
+        targets: this.comboText,
+        scaleX: 1.3, scaleY: 1.3,
+        duration: 100, yoyo: true
+      });
+    } else {
+      this.tweens.add({
+        targets: this.comboText,
+        alpha: 0, duration: 300
+      });
+    }
+  }
+
+  updateTimer(seconds) {
+    if (this.timerText) {
+      this.timerText.setText(`${seconds}s`);
     }
   }
 }

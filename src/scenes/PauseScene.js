@@ -70,9 +70,14 @@ export class PauseScene extends Phaser.Scene {
 
   restartGame() {
     AudioManager.playSound('menu_click');
+    const gameScene = this.scene.get('GameScene');
     this.scene.stop('UIScene');
     this.scene.stop();
-    this.scene.get('GameScene').scene.restart();
+    if (gameScene) {
+      gameScene.scene.restart();
+    } else {
+      this.scene.start('MenuScene');
+    }
   }
 
   quitToMenu() {

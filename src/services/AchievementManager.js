@@ -1,5 +1,6 @@
 import { StorageService } from './StorageService.js';
 import { AudioManager } from './AudioManager.js';
+import { AnalyticsService } from './AnalyticsService.js';
 import { TOTAL_LEVELS } from '../config/levels.js';
 
 const ACHIEVEMENTS = [
@@ -124,6 +125,7 @@ class AchievementManagerClass {
       try {
         if (ach.check(context)) {
           StorageService.unlockAchievement(ach.id);
+          AnalyticsService.trackAchievementUnlock(ach.id);
           newlyUnlocked.push(ach);
         }
       } catch (e) {

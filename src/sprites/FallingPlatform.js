@@ -60,6 +60,7 @@ export class FallingPlatform extends Phaser.Physics.Arcade.Image {
   }
 
   respawn() {
+    if (!this.scene || !this.scene.sys.isActive()) return;
     this.setPosition(this.startX, this.startY);
     this.setAlpha(0);
     this.clearTint();

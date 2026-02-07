@@ -11,6 +11,7 @@ import { SettingsScene } from './scenes/SettingsScene.js';
 import { AchievementsScene } from './scenes/AchievementsScene.js';
 import { StatsScene } from './scenes/StatsScene.js';
 import { SkinsScene } from './scenes/SkinsScene.js';
+import { AnalyticsService } from './services/AnalyticsService.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -93,6 +94,11 @@ document.addEventListener('backbutton', () => {
       return;
     }
   }
+});
+
+// End analytics session on page unload
+window.addEventListener('beforeunload', () => {
+  AnalyticsService.endSession();
 });
 
 export default game;

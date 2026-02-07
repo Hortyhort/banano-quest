@@ -44,6 +44,12 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     });
 
     this.body.setVelocityX(0);
+
+    // Clean up health bar on scene shutdown
+    scene.events.once('shutdown', () => {
+      if (this.healthBarBg) { this.healthBarBg.destroy(); this.healthBarBg = null; }
+      if (this.healthBarFg) { this.healthBarFg.destroy(); this.healthBarFg = null; }
+    });
   }
 
   drawHealthBar() {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY, PLAYER, GAME_HEIGHT } from '../config/gameConfig.js';
 import { AudioManager } from '../services/AudioManager.js';
+import { AnalyticsService } from '../services/AnalyticsService.js';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -170,6 +171,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     AudioManager.playSound('player_death');
     AudioManager.vibrate([50, 30, 80]);
 
+    // S8: Track death location for heatmap
+    const level = this.scene.levelNum || 1;
+    const cause = this.y > GAME_HEIGHT + 50 ? 'fall' : 'enemy';
+    AnalyticsService.trackDeath(level, this.x, this.y, cause);
+
     // S4.2: Death particles
     if (this.scene.spawnDeathParticles) {
       this.scene.spawnDeathParticles(this.x, this.y);
@@ -222,6 +228,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setAlpha(1);
     this.setAngle(0);
     this.clearTint();
+
+    // Clear active power-up on respawn
+    this.clearPowerUp();
 
     // Reapply skin tint if set
     if (this.skinTint) {

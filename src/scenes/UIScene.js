@@ -34,6 +34,14 @@ export class UIScene extends Phaser.Scene {
       this.gameScene.events.on('updateLives', this.updateLives, this);
       this.gameScene.events.on('updatePowerUp', this.updatePowerUp, this);
     }
+
+    // Clean up timer on shutdown
+    this.events.once('shutdown', () => {
+      if (this.powerUpTimerEvent) {
+        this.powerUpTimerEvent.remove();
+        this.powerUpTimerEvent = null;
+      }
+    });
   }
 
   createScoreDisplay() {

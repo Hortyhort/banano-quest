@@ -21,6 +21,7 @@ import { Boss } from '../sprites/Boss.js';
 import { StorageService } from '../services/StorageService.js';
 import { AudioManager } from '../services/AudioManager.js';
 import { AchievementManager } from '../services/AchievementManager.js';
+import { AnalyticsService } from '../services/AnalyticsService.js';
 import { TouchControls } from '../ui/TouchControls.js';
 
 export class GameScene extends Phaser.Scene {
@@ -29,7 +30,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.levelNum = data.level || 1;
+    this.levelNum = Math.max(1, Math.min(TOTAL_LEVELS, data.level || 1));
     this.levelData = LEVELS[this.levelNum - 1];
     this.score = 0;
     this.totalCoins = 0;
@@ -180,6 +181,9 @@ export class GameScene extends Phaser.Scene {
 
     // S6: Level timer
     this.levelStartTime = this.time.now;
+
+    // S8: Analytics
+    AnalyticsService.trackLevelStart(this.levelNum);
 
     // S6.3: Apply skin tint
     const skin = StorageService.getSelectedSkin();
@@ -673,6 +677,7 @@ export class GameScene extends Phaser.Scene {
   handleCoinCollect(player, coin) {
     if (player.isDead) return;
     const points = coin.collect();
+    if (points === 0) return; // Already collected (double-collision guard)
     this.score += points;
     this.collectedCoins++;
     StorageService.addCoins(1);
@@ -727,6 +732,7 @@ export class GameScene extends Phaser.Scene {
     player.applyPowerUp(type);
     this.powerUpsCollected++;
     StorageService.addPowerUp();
+    AnalyticsService.trackPowerUpCollect(this.levelNum, type);
     AudioManager.playSound('powerup_collect');
     AudioManager.vibrate(20);
     this.showFloatingScore(powerUp.x, powerUp.y, 0, type.toUpperCase());
@@ -791,6 +797,7 @@ export class GameScene extends Phaser.Scene {
 
   handleBossDefeated() {
     this.bossDefeated = true;
+    AnalyticsService.trackBossEncounter(this.levelNum, 'defeated');
     // Boss levels complete when boss is defeated
     this.time.delayedCall(1200, () => {
       this.levelComplete();
@@ -806,6 +813,9 @@ export class GameScene extends Phaser.Scene {
     // S6: Persist play time
     const playTime = (this.time.now - this.levelStartTime) / 1000;
     StorageService.addPlayTime(playTime);
+
+    // S8: Analytics
+    AnalyticsService.trackLevelFail(this.levelNum, this.deathsThisLevel);
 
     if (this.touchControls) { this.touchControls.destroy(); this.touchControls = null; }
     this.cameras.main.fadeOut(500, 0, 0, 0);
@@ -924,6 +934,9 @@ export class GameScene extends Phaser.Scene {
     const levelTime = (this.time.now - this.levelStartTime) / 1000;
     StorageService.addPlayTime(levelTime);
     StorageService.setLevelBestTime(this.levelNum, levelTime);
+
+    // S8: Analytics
+    AnalyticsService.trackLevelComplete(this.levelNum, levelTime, stars, this.collectedCoins, this.totalCoins);
 
     // S6: Check skin unlocks
     this.checkSkinUnlocks();

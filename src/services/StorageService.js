@@ -25,6 +25,16 @@ class StorageServiceClass {
     this.isAvailable = this.checkAvailability();
   }
 
+  _safeParseJSON(raw, fallback) {
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      console.warn('Corrupted storage data:', e);
+      return fallback;
+    }
+  }
+
   checkAvailability() {
     try {
       const test = '__storage_test__';
@@ -87,14 +97,14 @@ class StorageServiceClass {
   getLevelStars(level) {
     if (!this.isAvailable) return 0;
     const data = localStorage.getItem(STORAGE_KEYS.LEVEL_STARS);
-    const stars = data ? JSON.parse(data) : {};
+    const stars = this._safeParseJSON(data, {});
     return stars[level] || 0;
   }
 
   setLevelStars(level, starCount) {
     if (!this.isAvailable) return;
     const data = localStorage.getItem(STORAGE_KEYS.LEVEL_STARS);
-    const stars = data ? JSON.parse(data) : {};
+    const stars = this._safeParseJSON(data, {});
     if (starCount > (stars[level] || 0)) {
       stars[level] = starCount;
       localStorage.setItem(STORAGE_KEYS.LEVEL_STARS, JSON.stringify(stars));
@@ -106,14 +116,14 @@ class StorageServiceClass {
   getAllStars() {
     if (!this.isAvailable) return {};
     const data = localStorage.getItem(STORAGE_KEYS.LEVEL_STARS);
-    return data ? JSON.parse(data) : {};
+    return this._safeParseJSON(data, {});
   }
 
   // Settings
   getSettings() {
     if (!this.isAvailable) return { ...DEFAULT_SETTINGS };
     const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    return settings ? JSON.parse(settings) : { ...DEFAULT_SETTINGS };
+    return this._safeParseJSON(settings, { ...DEFAULT_SETTINGS });
   }
 
   updateSettings(newSettings) {
@@ -136,7 +146,7 @@ class StorageServiceClass {
   getAchievements() {
     if (!this.isAvailable) return [];
     const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
-    return data ? JSON.parse(data) : [];
+    return this._safeParseJSON(data, []);
   }
 
   unlockAchievement(id) {
@@ -162,7 +172,7 @@ class StorageServiceClass {
     };
     if (!this.isAvailable) return defaults;
     const data = localStorage.getItem(STORAGE_KEYS.STATS);
-    const stored = data ? JSON.parse(data) : {};
+    const stored = this._safeParseJSON(data, {});
     return {
       ...defaults,
       ...stored,
@@ -229,7 +239,7 @@ class StorageServiceClass {
   getUnlockedSkins() {
     if (!this.isAvailable) return ['default'];
     const data = localStorage.getItem(STORAGE_KEYS.UNLOCKED_SKINS);
-    const skins = data ? JSON.parse(data) : ['default'];
+    const skins = this._safeParseJSON(data, ['default']);
     if (!skins.includes('default')) skins.unshift('default');
     return skins;
   }

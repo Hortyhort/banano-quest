@@ -14,6 +14,7 @@ export class Coin extends Phaser.Physics.Arcade.Sprite {
 
     // Value
     this.value = COIN.SCORE_VALUE;
+    this.collected = false;
 
     // Floating animation
     this.startY = y;
@@ -46,6 +47,9 @@ export class Coin extends Phaser.Physics.Arcade.Sprite {
   }
 
   collect() {
+    if (this.collected) return 0;
+    this.collected = true;
+
     // Stop ongoing animations
     if (this.floatTween) this.floatTween.stop();
     if (this.shimmerTween) this.shimmerTween.stop();

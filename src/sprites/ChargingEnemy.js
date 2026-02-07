@@ -12,6 +12,7 @@ export class ChargingEnemy extends Phaser.Physics.Arcade.Sprite {
     this.body.setBounce(0);
     this.body.setCollideWorldBounds(true);
 
+    this.spawnX = x;
     this.startX = x;
     this.detectionRange = config.detectionRange || 200;
     this.chargeSpeed = config.chargeSpeed || 200;
@@ -77,7 +78,7 @@ export class ChargingEnemy extends Phaser.Physics.Arcade.Sprite {
         this.body.setVelocityX(0);
         this.clearTint();
         this.chargeCooldown = 1500;
-        this.startX = this.x;
+        this.startX = this.spawnX;
       }
     }
   }

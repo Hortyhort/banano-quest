@@ -48,6 +48,22 @@ export const LEVEL_1_PLATFORMS = [
   { x: 150, y: 200, width: 150, height: 32 }
 ];
 
+// Level 1 enemy placements
+export const LEVEL_1_ENEMIES = [
+  { x: 500, y: 650, patrolDistance: 120, speed: 60 },   // ground center
+  { x: 900, y: 650, patrolDistance: 100, speed: 70 },   // ground right
+  { x: 500, y: 418, patrolDistance: 70, speed: 50 },    // mid-left platform
+  { x: 800, y: 518, patrolDistance: 70, speed: 55 },    // low-right platform
+  { x: 700, y: 268, patrolDistance: 90, speed: 65 }     // upper-center platform
+];
+
+// Level 1 spike placements
+export const LEVEL_1_SPIKES = [
+  { x: 680, y: 674 },  // ground gap area
+  { x: 1050, y: 434 }, // mid-right platform edge
+  { x: 350, y: 334 }   // upper-left platform
+];
+
 // Level 1 coin positions
 export const LEVEL_1_COINS = [
   { x: 200, y: 500 },

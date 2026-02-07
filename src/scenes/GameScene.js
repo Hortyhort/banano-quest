@@ -5,10 +5,14 @@ import {
   COLORS,
   PLAYER,
   LEVEL_1_PLATFORMS,
-  LEVEL_1_COINS
+  LEVEL_1_COINS,
+  LEVEL_1_ENEMIES,
+  LEVEL_1_SPIKES
 } from '../config/gameConfig.js';
 import { Player } from '../sprites/Player.js';
 import { Coin } from '../sprites/Coin.js';
+import { Enemy } from '../sprites/Enemy.js';
+import { Spike } from '../sprites/Spike.js';
 import { StorageService } from '../services/StorageService.js';
 import { TouchControls } from '../ui/TouchControls.js';
 
@@ -19,12 +23,14 @@ export class GameScene extends Phaser.Scene {
     this.level = 1;
     this.totalCoins = 0;
     this.collectedCoins = 0;
+    this.levelEnded = false;
   }
 
   create() {
     // Reset state
     this.score = 0;
     this.collectedCoins = 0;
+    this.levelEnded = false;
 
     // Create background with gradient
     this.createBackground();
@@ -44,14 +50,34 @@ export class GameScene extends Phaser.Scene {
     this.coins = this.physics.add.group();
     this.createCoins();
 
-    // Setup collisions
+    // Create enemies
+    this.enemies = this.physics.add.group();
+    this.createEnemies();
+
+    // Create spikes
+    this.spikes = this.physics.add.staticGroup();
+    this.createSpikes();
+
+    // --- Collisions ---
     this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.enemies, this.platforms);
+
+    // Player <-> Coins
     this.physics.add.overlap(
-      this.player,
-      this.coins,
-      this.handleCoinCollect,
-      null,
-      this
+      this.player, this.coins,
+      this.handleCoinCollect, null, this
+    );
+
+    // Player <-> Enemies (stomp or damage)
+    this.physics.add.overlap(
+      this.player, this.enemies,
+      this.handleEnemyCollision, null, this
+    );
+
+    // Player <-> Spikes
+    this.physics.add.overlap(
+      this.player, this.spikes,
+      this.handleSpikeHit, null, this
     );
 
     // Launch UI scene
@@ -60,22 +86,72 @@ export class GameScene extends Phaser.Scene {
     // Camera fade in
     this.cameras.main.fadeIn(500);
 
-    // Emit initial score and high score
+    // Emit initial state
     this.events.emit('updateScore', this.score);
     this.events.emit('updateLevel', this.level);
     this.events.emit('updateHighScore', StorageService.getHighScore());
+    this.events.emit('updateLives', this.player.lives);
+
+    // Listen for game over from player
+    this.events.on('gameOver', this.handleGameOver, this);
+
+    // --- Pause controls ---
+    this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.pKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+
+    // Create pause button (top-right, touch-friendly)
+    this.createPauseButton();
+
+    // Auto-pause on tab/app blur
+    this.visibilityHandler = () => {
+      if (document.hidden && this.scene.isActive() && !this.levelEnded) {
+        this.pauseGame();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+
+    // Clean up on scene shutdown
+    this.events.on('shutdown', () => {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    });
   }
 
+  // ---- Pause ----
+
+  createPauseButton() {
+    const btn = this.add.container(GAME_WIDTH - 40, 80);
+    btn.setDepth(900);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.3);
+    bg.fillRoundedRect(-25, -25, 50, 50, 10);
+
+    const icon = this.add.text(0, 0, '| |', {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '22px',
+      color: '#FFFFFF'
+    }).setOrigin(0.5);
+
+    btn.add([bg, icon]);
+    btn.setSize(50, 50);
+    btn.setInteractive({ useHandCursor: true });
+    btn.setScrollFactor(0);
+    btn.on('pointerdown', () => this.pauseGame());
+  }
+
+  pauseGame() {
+    if (this.scene.isPaused() || this.levelEnded) return;
+    this.scene.pause();
+    this.scene.launch('PauseScene');
+  }
+
+  // ---- Entity creation ----
+
   createBackground() {
-    // Sky gradient
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x87CEEB, 0x87CEEB, 0xB3E5FC, 0xB3E5FC, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Decorative clouds
     this.createClouds();
-
-    // Decorative hills in background
     this.createHills();
   }
 
@@ -91,16 +167,12 @@ export class GameScene extends Phaser.Scene {
     cloudPositions.forEach(cloud => {
       const g = this.add.graphics();
       g.fillStyle(0xFFFFFF, 0.8);
-
-      // Cloud shape (overlapping circles)
       g.fillCircle(0, 0, 30 * cloud.scale);
       g.fillCircle(25 * cloud.scale, -10 * cloud.scale, 25 * cloud.scale);
       g.fillCircle(50 * cloud.scale, 0, 30 * cloud.scale);
       g.fillCircle(25 * cloud.scale, 10 * cloud.scale, 20 * cloud.scale);
-
       g.setPosition(cloud.x, cloud.y);
 
-      // Slow floating animation
       this.tweens.add({
         targets: g,
         x: g.x + 30,
@@ -115,14 +187,12 @@ export class GameScene extends Phaser.Scene {
   createHills() {
     const hillGraphics = this.add.graphics();
 
-    // Far hills (darker, smaller)
     hillGraphics.fillStyle(0x81C784, 0.5);
     this.drawHill(hillGraphics, 0, GAME_HEIGHT - 100, 300, 100);
     this.drawHill(hillGraphics, 250, GAME_HEIGHT - 80, 250, 80);
     this.drawHill(hillGraphics, 600, GAME_HEIGHT - 120, 350, 120);
     this.drawHill(hillGraphics, 950, GAME_HEIGHT - 90, 400, 90);
 
-    // Near hills (brighter, larger)
     hillGraphics.fillStyle(0x66BB6A, 0.6);
     this.drawHill(hillGraphics, -50, GAME_HEIGHT - 60, 200, 60);
     this.drawHill(hillGraphics, 400, GAME_HEIGHT - 70, 280, 70);
@@ -145,7 +215,6 @@ export class GameScene extends Phaser.Scene {
       const tileWidth = 64;
       const tileHeight = isGround ? 64 : 32;
 
-      // Create tiled platform
       const tilesX = Math.ceil(platform.width / tileWidth);
       const startX = platform.x - platform.width / 2;
       const startY = platform.y - platform.height / 2;
@@ -164,35 +233,92 @@ export class GameScene extends Phaser.Scene {
 
   createCoins() {
     this.totalCoins = LEVEL_1_COINS.length;
-
     LEVEL_1_COINS.forEach(coinPos => {
-      new Coin(this, coinPos.x, coinPos.y);
-      this.coins.add(this.coins.getLast(true));
+      const coin = new Coin(this, coinPos.x, coinPos.y);
+      this.coins.add(coin);
     });
   }
 
+  createEnemies() {
+    LEVEL_1_ENEMIES.forEach(cfg => {
+      const enemy = new Enemy(this, cfg.x, cfg.y, cfg);
+      this.enemies.add(enemy);
+    });
+  }
+
+  createSpikes() {
+    LEVEL_1_SPIKES.forEach(pos => {
+      const spike = new Spike(this, pos.x, pos.y);
+      this.spikes.add(spike);
+    });
+  }
+
+  // ---- Collision handlers ----
+
   handleCoinCollect(player, coin) {
+    if (player.isDead) return;
     const points = coin.collect();
     this.score += points;
     this.collectedCoins++;
 
-    // Track total coins collected (lifetime stat)
     StorageService.addCoins(1);
-
-    // Update UI
     this.events.emit('updateScore', this.score);
-
-    // Player feedback
     player.collectCoin();
-
-    // Show floating score text
     this.showFloatingScore(coin.x, coin.y, points);
 
-    // Check for level complete
     if (this.collectedCoins >= this.totalCoins) {
       this.levelComplete();
     }
   }
+
+  handleEnemyCollision(player, enemy) {
+    if (player.isDead || !enemy.alive) return;
+
+    // Stomp check: player is falling and player's feet are above enemy's center
+    const isStomp = player.body.velocity.y > 0 &&
+      player.body.bottom < enemy.body.center.y + 5;
+
+    if (isStomp) {
+      const points = enemy.stomp();
+      this.score += points;
+      this.events.emit('updateScore', this.score);
+      this.showFloatingScore(enemy.x, enemy.y, points);
+
+      // Bounce player up
+      player.body.setVelocityY(-300);
+    } else {
+      // Player takes damage
+      player.hit();
+    }
+  }
+
+  handleSpikeHit(player, spike) {
+    if (player.isDead) return;
+    player.hit();
+  }
+
+  handleGameOver() {
+    this.levelEnded = true;
+
+    // Save high score
+    StorageService.setHighScore(this.score);
+
+    // Clean up touch controls
+    if (this.touchControls) {
+      this.touchControls.destroy();
+      this.touchControls = null;
+    }
+
+    // Transition to game over scene
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(600, () => {
+      this.scene.stop('UIScene');
+      this.scene.stop();
+      this.scene.start('GameOverScene', { score: this.score });
+    });
+  }
+
+  // ---- UI helpers ----
 
   showFloatingScore(x, y, points) {
     const scoreText = this.add.text(x, y, `+${points}`, {
@@ -214,29 +340,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   levelComplete() {
-    // Check for new high score
+    this.levelEnded = true;
+
     const isNewHighScore = StorageService.setHighScore(this.score);
     const highScore = StorageService.getHighScore();
 
-    // Show completion message
     const overlay = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x000000,
-      0
+      GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT, 0x000000, 0
     );
-
-    this.tweens.add({
-      targets: overlay,
-      alpha: 0.5,
-      duration: 500
-    });
+    this.tweens.add({ targets: overlay, alpha: 0.5, duration: 500 });
 
     const completeText = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 - 80,
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80,
       'LEVEL COMPLETE!',
       {
         fontFamily: 'Arial Black, Arial',
@@ -247,11 +363,9 @@ export class GameScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setAlpha(0);
 
-    // New high score celebration
     if (isNewHighScore) {
       const newHighText = this.add.text(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2 - 20,
+        GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20,
         'NEW HIGH SCORE!',
         {
           fontFamily: 'Arial Black, Arial',
@@ -264,69 +378,40 @@ export class GameScene extends Phaser.Scene {
 
       this.tweens.add({
         targets: newHighText,
-        alpha: 1,
-        scaleX: 1.2,
-        scaleY: 1.2,
-        duration: 300,
-        delay: 500,
-        yoyo: true,
-        repeat: 2
+        alpha: 1, scaleX: 1.2, scaleY: 1.2,
+        duration: 300, delay: 500,
+        yoyo: true, repeat: 2
       });
     }
 
     const scoreText = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 30,
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30,
       `Score: ${this.score}`,
-      {
-        fontFamily: 'Arial',
-        fontSize: '36px',
-        color: '#FFFFFF',
-        stroke: '#000000',
-        strokeThickness: 4
-      }
+      { fontFamily: 'Arial', fontSize: '36px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 4 }
     ).setOrigin(0.5).setAlpha(0);
 
     const highScoreText = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 75,
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 75,
       `High Score: ${highScore}`,
-      {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#FFD700',
-        stroke: '#000000',
-        strokeThickness: 3
-      }
+      { fontFamily: 'Arial', fontSize: '24px', color: '#FFD700', stroke: '#000000', strokeThickness: 3 }
     ).setOrigin(0.5).setAlpha(0);
 
     const isTouchDevice = this.sys.game.device.input.touch;
     const continueLabel = isTouchDevice ? 'Tap to play again' : 'Press SPACE to play again';
 
     const continueText = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2 + 130,
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 130,
       continueLabel,
-      {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#FFFFFF',
-        stroke: '#000000',
-        strokeThickness: 3
-      }
+      { fontFamily: 'Arial', fontSize: '24px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 3 }
     ).setOrigin(0.5).setAlpha(0);
 
     this.tweens.add({
       targets: [completeText, scoreText, highScoreText, continueText],
-      alpha: 1,
-      duration: 500,
-      delay: 300
+      alpha: 1, duration: 500, delay: 300
     });
 
-    // Update UI with new high score
     this.events.emit('updateHighScore', highScore);
 
-    // Hide touch controls during level-complete overlay
     if (this.touchControls) {
       this.touchControls.destroy();
       this.touchControls = null;
@@ -337,19 +422,32 @@ export class GameScene extends Phaser.Scene {
       this.scene.restart();
     };
 
-    // Wait for space or tap to restart
     this.input.keyboard.once('keydown-SPACE', restart);
     this.time.delayedCall(800, () => {
       this.input.once('pointerdown', restart);
     });
   }
 
+  // ---- Game loop ----
+
   update() {
+    // Pause key checks
+    if (Phaser.Input.Keyboard.JustDown(this.pauseKey) ||
+        Phaser.Input.Keyboard.JustDown(this.pKey)) {
+      this.pauseGame();
+      return;
+    }
+
     if (this.touchControls) {
       this.touchControls.update();
     }
-    if (this.player) {
+    if (this.player && !this.player.isDead) {
       this.player.update();
     }
+
+    // Update enemies
+    this.enemies.getChildren().forEach(enemy => {
+      if (enemy.active) enemy.update();
+    });
   }
 }

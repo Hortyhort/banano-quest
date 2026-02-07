@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY, PLAYER } from '../config/gameConfig.js';
+import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY, PLAYER, GAME_HEIGHT } from '../config/gameConfig.js';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -9,14 +9,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     // Physics settings
-    this.body.setCollideWorldBounds(true);
+    this.body.setCollideWorldBounds(false); // allow falling off bottom
     this.body.setSize(40, 60);
     this.body.setOffset(12, 18);
+
+    // Spawn point
+    this.spawnX = x;
+    this.spawnY = y;
 
     // Movement state
     this.isJumping = false;
     this.walkFrame = 0;
     this.walkTimer = 0;
+
+    // Lives & damage state
+    this.lives = 3;
+    this.isDead = false;
+    this.isInvincible = false;
+    this.invincibleTimer = null;
+    this.flickerTween = null;
 
     // Touch controls reference (set externally)
     this.touchControls = null;
@@ -36,6 +47,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   update() {
+    if (this.isDead) return;
+
+    // Fall death
+    if (this.y > GAME_HEIGHT + 60) {
+      this.die();
+      return;
+    }
+
     const onGround = this.body.blocked.down || this.body.touching.down;
     const tc = this.touchControls;
 
@@ -91,8 +110,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Walking animation
     if (this.body.velocity.x !== 0) {
-      this.walkTimer += 16; // Approximate frame time
-      if (this.walkTimer > 150) { // Switch frame every 150ms
+      this.walkTimer += 16;
+      if (this.walkTimer > 150) {
         this.walkTimer = 0;
         this.walkFrame = (this.walkFrame + 1) % 2;
       }
@@ -103,6 +122,89 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.walkTimer = 0;
       this.walkFrame = 0;
     }
+  }
+
+  hit() {
+    if (this.isDead || this.isInvincible) return;
+    this.die();
+  }
+
+  die() {
+    if (this.isDead) return;
+    this.isDead = true;
+    this.lives--;
+
+    // Stop movement
+    this.body.setVelocity(0, 0);
+    this.body.enable = false;
+
+    // Screen shake
+    this.scene.cameras.main.shake(200, 0.01);
+
+    // Emit lives update
+    this.scene.events.emit('updateLives', this.lives);
+
+    if (this.lives <= 0) {
+      // Game over — death animation then transition
+      this.scene.tweens.add({
+        targets: this,
+        scaleX: 0,
+        scaleY: 0,
+        angle: 720,
+        alpha: 0,
+        duration: 600,
+        ease: 'Power2',
+        onComplete: () => {
+          this.scene.events.emit('gameOver');
+        }
+      });
+    } else {
+      // Death animation then respawn
+      this.setTint(0xFF0000);
+      this.scene.tweens.add({
+        targets: this,
+        alpha: 0,
+        scaleY: 0.3,
+        duration: 400,
+        ease: 'Power2',
+        onComplete: () => {
+          this.respawn();
+        }
+      });
+    }
+  }
+
+  respawn() {
+    // Reset position
+    this.setPosition(this.spawnX, this.spawnY);
+    this.setScale(1);
+    this.setAlpha(1);
+    this.setAngle(0);
+    this.clearTint();
+
+    // Re-enable physics
+    this.body.enable = true;
+    this.body.setVelocity(0, 0);
+    this.isDead = false;
+
+    // Start invincibility
+    this.isInvincible = true;
+
+    // Flicker effect
+    this.flickerTween = this.scene.tweens.add({
+      targets: this,
+      alpha: { from: 1, to: 0.3 },
+      duration: 100,
+      yoyo: true,
+      repeat: 10
+    });
+
+    // End invincibility after 2 seconds
+    this.invincibleTimer = this.scene.time.delayedCall(2000, () => {
+      this.isInvincible = false;
+      this.setAlpha(1);
+      if (this.flickerTween) this.flickerTween.stop();
+    });
   }
 
   collectCoin() {

@@ -20,11 +20,15 @@ export class UIScene extends Phaser.Scene {
     // Level display
     this.createLevelDisplay();
 
+    // Lives display
+    this.createLivesDisplay();
+
     // Listen for updates from GameScene
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
       this.gameScene.events.on('updateLevel', this.updateLevel, this);
       this.gameScene.events.on('updateHighScore', this.updateHighScore, this);
+      this.gameScene.events.on('updateLives', this.updateLives, this);
     }
   }
 
@@ -92,6 +96,43 @@ export class UIScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 4
     }).setOrigin(0.5);
+  }
+
+  createLivesDisplay() {
+    // Background panel
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(GAME_WIDTH - 290, 15, 130, 50, 10);
+
+    // Heart icons
+    this.heartIcons = [];
+    for (let i = 0; i < 3; i++) {
+      const heart = this.add.image(GAME_WIDTH - 270 + i * 38, 40, 'heart').setScale(0.9);
+      this.heartIcons.push(heart);
+    }
+  }
+
+  updateLives(lives) {
+    this.heartIcons.forEach((heart, i) => {
+      if (i < lives) {
+        heart.setAlpha(1);
+        heart.clearTint();
+      } else {
+        // Animate heart loss
+        this.tweens.add({
+          targets: heart,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          alpha: 0.2,
+          duration: 200,
+          yoyo: false,
+          onComplete: () => {
+            heart.setScale(0.9);
+            heart.setTint(0x333333);
+          }
+        });
+      }
+    });
   }
 
   updateScore(score) {

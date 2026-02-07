@@ -95,6 +95,71 @@ export class BootScene extends Phaser.Scene {
 
     groundGraphics.generateTexture('ground', 64, 64);
     groundGraphics.destroy();
+
+    // Generate slime enemy sprite
+    const slimeGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+    // Body
+    slimeGraphics.fillStyle(0x4CAF50);
+    slimeGraphics.fillEllipse(24, 28, 36, 28);
+    // Darker bottom
+    slimeGraphics.fillStyle(0x388E3C);
+    slimeGraphics.fillEllipse(24, 34, 36, 16);
+    // Eyes (white)
+    slimeGraphics.fillStyle(0xFFFFFF);
+    slimeGraphics.fillCircle(16, 22, 7);
+    slimeGraphics.fillCircle(32, 22, 7);
+    // Pupils
+    slimeGraphics.fillStyle(0x1B5E20);
+    slimeGraphics.fillCircle(18, 23, 4);
+    slimeGraphics.fillCircle(34, 23, 4);
+    // Angry eyebrows
+    slimeGraphics.lineStyle(2, 0x1B5E20);
+    slimeGraphics.beginPath();
+    slimeGraphics.moveTo(10, 16);
+    slimeGraphics.lineTo(20, 18);
+    slimeGraphics.strokePath();
+    slimeGraphics.beginPath();
+    slimeGraphics.moveTo(38, 16);
+    slimeGraphics.lineTo(28, 18);
+    slimeGraphics.strokePath();
+
+    slimeGraphics.generateTexture('slime', 48, 40);
+    slimeGraphics.destroy();
+
+    // Generate spike hazard sprite
+    const spikeGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+    const spikeCount = 4;
+    const spikeW = 48;
+    const spikeH = 32;
+    const sw = spikeW / spikeCount;
+    for (let i = 0; i < spikeCount; i++) {
+      spikeGraphics.fillStyle(0x9E9E9E);
+      spikeGraphics.fillTriangle(
+        i * sw, spikeH,
+        i * sw + sw / 2, 4,
+        i * sw + sw, spikeH
+      );
+      spikeGraphics.lineStyle(1, 0xBDBDBD);
+      spikeGraphics.beginPath();
+      spikeGraphics.moveTo(i * sw + sw / 2, 4);
+      spikeGraphics.lineTo(i * sw + sw, spikeH);
+      spikeGraphics.strokePath();
+    }
+
+    spikeGraphics.generateTexture('spike', spikeW, spikeH);
+    spikeGraphics.destroy();
+
+    // Generate heart sprite for lives display
+    const heartGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+    heartGraphics.fillStyle(0xFF1744);
+    heartGraphics.fillCircle(10, 10, 8);
+    heartGraphics.fillCircle(22, 10, 8);
+    heartGraphics.fillTriangle(2, 12, 30, 12, 16, 28);
+    heartGraphics.fillStyle(0xFF5252);
+    heartGraphics.fillCircle(9, 8, 4);
+
+    heartGraphics.generateTexture('heart', 32, 30);
+    heartGraphics.destroy();
   }
 
   create() {

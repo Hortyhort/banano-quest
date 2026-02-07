@@ -36,6 +36,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Moving platform velocity inheritance
     this.ridingPlatformVx = 0;
 
+    // Power-up state
+    this.activePowerUp = null;
+    this.powerUpTimer = null;
+    this.powerUpGlow = null;
+    this.doubleJumpUsed = false;
+
     // Setup controls
     this.cursors = scene.input.keyboard.createCursorKeys();
     this.wasd = {
@@ -79,12 +85,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Horizontal movement (keyboard + touch)
     const leftDown = this.cursors.left.isDown || this.wasd.left.isDown || (tc && tc.left);
     const rightDown = this.cursors.right.isDown || this.wasd.right.isDown || (tc && tc.right);
+    const speed = this.activePowerUp === 'speed' ? PLAYER_SPEED * 1.5 : PLAYER_SPEED;
 
     if (leftDown) {
-      this.body.setVelocityX(-PLAYER_SPEED + this.ridingPlatformVx);
+      this.body.setVelocityX(-speed + this.ridingPlatformVx);
       this.setFlipX(true);
     } else if (rightDown) {
-      this.body.setVelocityX(PLAYER_SPEED + this.ridingPlatformVx);
+      this.body.setVelocityX(speed + this.ridingPlatformVx);
       this.setFlipX(false);
     } else {
       this.body.setVelocityX(this.ridingPlatformVx);
@@ -94,7 +101,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const jumpPressed = this.cursors.up.isDown || this.wasd.up.isDown || this.spaceKey.isDown;
     const jumpJustPressed = (jumpPressed && !this.spaceWasPressed) || (tc && tc.jumpJustPressed);
 
-    if (jumpJustPressed && onGround && !this.isJumping) {
+    // Double jump: allow one extra jump in mid-air
+    const canDoubleJump = this.activePowerUp === 'doubleJump' && !onGround && !this.doubleJumpUsed;
+
+    if (jumpJustPressed && (onGround || canDoubleJump) && (!this.isJumping || canDoubleJump)) {
+      if (!onGround && canDoubleJump) {
+        this.doubleJumpUsed = true;
+      }
       this.body.setVelocityY(PLAYER_JUMP_VELOCITY);
       this.isJumping = true;
       AudioManager.playSound('jump');
@@ -111,6 +124,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.spaceWasPressed = jumpPressed;
+
+    // Update power-up glow position
+    if (this.powerUpGlow) {
+      this.powerUpGlow.setPosition(this.x, this.y);
+    }
 
     // Update sprite based on state
     this.updateSprite(onGround);
@@ -239,5 +257,58 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       duration: 100,
       yoyo: true
     });
+  }
+
+  applyPowerUp(type) {
+    // Clear existing power-up first
+    this.clearPowerUp();
+
+    this.activePowerUp = type;
+    this.doubleJumpUsed = false;
+
+    // Glow colors per type
+    const glowColors = {
+      speed: 0x42A5F5,
+      doubleJump: 0xFFFFFF,
+      magnet: 0xFFEB3B
+    };
+
+    // Create glow effect behind player
+    this.powerUpGlow = this.scene.add.circle(this.x, this.y, 40, glowColors[type] || 0xFFFFFF, 0.25);
+    this.powerUpGlow.setDepth(this.depth - 1);
+
+    // Pulse glow
+    this.scene.tweens.add({
+      targets: this.powerUpGlow,
+      alpha: { from: 0.25, to: 0.1 },
+      scale: { from: 1, to: 1.3 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1
+    });
+
+    // 8 second duration
+    this.powerUpTimer = this.scene.time.delayedCall(8000, () => {
+      this.clearPowerUp();
+      this.scene.events.emit('updatePowerUp', null, 0);
+    });
+
+    // Notify HUD
+    this.scene.events.emit('updatePowerUp', type, 8000);
+  }
+
+  clearPowerUp() {
+    this.activePowerUp = null;
+    this.doubleJumpUsed = false;
+
+    if (this.powerUpGlow) {
+      this.powerUpGlow.destroy();
+      this.powerUpGlow = null;
+    }
+
+    if (this.powerUpTimer) {
+      this.powerUpTimer.remove(false);
+      this.powerUpTimer = null;
+    }
   }
 }

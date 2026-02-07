@@ -179,6 +179,158 @@ export class BootScene extends Phaser.Scene {
 
     heartGraphics.generateTexture('heart', 32, 30);
     heartGraphics.destroy();
+
+    // ── S5: Question block texture ──
+    const qBlockG = this.make.graphics({ x: 0, y: 0, add: false });
+    qBlockG.fillStyle(0xFFB300);
+    qBlockG.fillRect(0, 0, 48, 48);
+    qBlockG.fillStyle(0xFFCA28);
+    qBlockG.fillRect(4, 4, 40, 40);
+    qBlockG.lineStyle(3, 0xFF6F00);
+    qBlockG.strokeRect(1, 1, 46, 46);
+    // ? mark
+    qBlockG.fillStyle(0xFF6F00);
+    qBlockG.fillRect(20, 10, 8, 4);
+    qBlockG.fillRect(24, 14, 6, 6);
+    qBlockG.fillRect(18, 14, 6, 6);
+    qBlockG.fillRect(24, 18, 4, 6);
+    qBlockG.fillRect(20, 22, 8, 4);
+    qBlockG.fillRect(22, 26, 4, 4);
+    qBlockG.fillRect(22, 32, 4, 5);
+    qBlockG.generateTexture('question_block', 48, 48);
+    qBlockG.destroy();
+
+    // Used block texture
+    const usedBlockG = this.make.graphics({ x: 0, y: 0, add: false });
+    usedBlockG.fillStyle(0x8D6E63);
+    usedBlockG.fillRect(0, 0, 48, 48);
+    usedBlockG.fillStyle(0x795548);
+    usedBlockG.fillRect(4, 4, 40, 40);
+    usedBlockG.lineStyle(2, 0x5D4037);
+    usedBlockG.strokeRect(1, 1, 46, 46);
+    usedBlockG.generateTexture('used_block', 48, 48);
+    usedBlockG.destroy();
+
+    // Power-up: Speed (blue star)
+    this.generatePowerUpTexture('powerup_speed', 0x42A5F5, 0x1E88E5);
+    // Power-up: Double Jump (white star)
+    this.generatePowerUpTexture('powerup_jump', 0xFFFFFF, 0xE0E0E0);
+    // Power-up: Magnet (yellow star)
+    this.generatePowerUpTexture('powerup_magnet', 0xFFEB3B, 0xFFC107);
+
+    // Flying enemy (purple bat)
+    const flyG = this.make.graphics({ x: 0, y: 0, add: false });
+    // Body
+    flyG.fillStyle(0x7E57C2);
+    flyG.fillEllipse(24, 24, 28, 22);
+    // Wings
+    flyG.fillStyle(0x9575CD);
+    flyG.fillTriangle(0, 14, 12, 20, 8, 32);
+    flyG.fillTriangle(48, 14, 36, 20, 40, 32);
+    // Eyes
+    flyG.fillStyle(0xFFFFFF);
+    flyG.fillCircle(17, 20, 5);
+    flyG.fillCircle(31, 20, 5);
+    flyG.fillStyle(0x311B92);
+    flyG.fillCircle(18, 21, 3);
+    flyG.fillCircle(32, 21, 3);
+    // Fangs
+    flyG.fillStyle(0xFFFFFF);
+    flyG.fillTriangle(20, 28, 22, 34, 24, 28);
+    flyG.fillTriangle(24, 28, 26, 34, 28, 28);
+    flyG.generateTexture('flying_enemy', 48, 40);
+    flyG.destroy();
+
+    // Charging enemy (red bull)
+    const chargeG = this.make.graphics({ x: 0, y: 0, add: false });
+    // Body
+    chargeG.fillStyle(0xD32F2F);
+    chargeG.fillEllipse(24, 26, 40, 28);
+    // Darker underside
+    chargeG.fillStyle(0xB71C1C);
+    chargeG.fillEllipse(24, 32, 40, 16);
+    // Horns
+    chargeG.fillStyle(0xBDBDBD);
+    chargeG.fillTriangle(8, 14, 2, 4, 14, 18);
+    chargeG.fillTriangle(40, 14, 46, 4, 34, 18);
+    // Eyes (angry)
+    chargeG.fillStyle(0xFFFFFF);
+    chargeG.fillCircle(16, 20, 6);
+    chargeG.fillCircle(32, 20, 6);
+    chargeG.fillStyle(0x1A1A1A);
+    chargeG.fillCircle(18, 21, 3);
+    chargeG.fillCircle(34, 21, 3);
+    // Nostrils
+    chargeG.fillStyle(0xFF6F00);
+    chargeG.fillCircle(21, 30, 3);
+    chargeG.fillCircle(27, 30, 3);
+    chargeG.generateTexture('charging_enemy', 48, 40);
+    chargeG.destroy();
+
+    // Boss (large enemy)
+    const bossG = this.make.graphics({ x: 0, y: 0, add: false });
+    // Large body
+    bossG.fillStyle(0xE53935);
+    bossG.fillEllipse(48, 52, 80, 56);
+    bossG.fillStyle(0xC62828);
+    bossG.fillEllipse(48, 60, 80, 36);
+    // Crown
+    bossG.fillStyle(0xFFD600);
+    bossG.fillRect(24, 8, 48, 12);
+    bossG.fillTriangle(24, 8, 32, 0, 40, 8);
+    bossG.fillTriangle(40, 8, 48, 0, 56, 8);
+    bossG.fillTriangle(56, 8, 64, 0, 72, 8);
+    // Crown gems
+    bossG.fillStyle(0xE53935);
+    bossG.fillCircle(36, 14, 3);
+    bossG.fillCircle(48, 14, 3);
+    bossG.fillCircle(60, 14, 3);
+    // Eyes
+    bossG.fillStyle(0xFFFFFF);
+    bossG.fillCircle(34, 40, 10);
+    bossG.fillCircle(62, 40, 10);
+    bossG.fillStyle(0x1A1A1A);
+    bossG.fillCircle(36, 42, 6);
+    bossG.fillCircle(64, 42, 6);
+    // Angry eyebrows
+    bossG.lineStyle(3, 0x1A1A1A);
+    bossG.beginPath();
+    bossG.moveTo(24, 30);
+    bossG.lineTo(38, 34);
+    bossG.strokePath();
+    bossG.beginPath();
+    bossG.moveTo(72, 30);
+    bossG.lineTo(58, 34);
+    bossG.strokePath();
+    // Mouth
+    bossG.fillStyle(0x1A1A1A);
+    bossG.fillRect(36, 56, 24, 6);
+    bossG.fillStyle(0xFFFFFF);
+    bossG.fillTriangle(40, 56, 44, 52, 48, 56);
+    bossG.fillTriangle(52, 56, 56, 52, 60, 56);
+    bossG.generateTexture('boss', 96, 76);
+    bossG.destroy();
+  }
+
+  generatePowerUpTexture(key, fillColor, strokeColor) {
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    // Outer glow
+    g.fillStyle(fillColor, 0.3);
+    g.fillCircle(16, 16, 16);
+    // Main circle
+    g.fillStyle(fillColor);
+    g.fillCircle(16, 16, 12);
+    // Highlight
+    g.fillStyle(0xFFFFFF, 0.5);
+    g.fillCircle(13, 12, 5);
+    // Border
+    g.lineStyle(2, strokeColor);
+    g.strokeCircle(16, 16, 12);
+    // Star shape in center
+    g.fillStyle(0xFFFFFF, 0.8);
+    g.fillCircle(16, 16, 4);
+    g.generateTexture(key, 32, 32);
+    g.destroy();
   }
 
   create() {

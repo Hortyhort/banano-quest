@@ -23,12 +23,16 @@ export class UIScene extends Phaser.Scene {
     // Lives display
     this.createLivesDisplay();
 
+    // Power-up indicator (S5.1)
+    this.createPowerUpDisplay();
+
     // Listen for updates from GameScene
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
       this.gameScene.events.on('updateLevel', this.updateLevel, this);
       this.gameScene.events.on('updateHighScore', this.updateHighScore, this);
       this.gameScene.events.on('updateLives', this.updateLives, this);
+      this.gameScene.events.on('updatePowerUp', this.updatePowerUp, this);
     }
   }
 
@@ -160,5 +164,96 @@ export class UIScene extends Phaser.Scene {
     if (this.highScoreText) {
       this.highScoreText.setText(`Best: ${highScore}`);
     }
+  }
+
+  createPowerUpDisplay() {
+    // Container for power-up indicator (hidden by default)
+    this.powerUpContainer = this.add.container(GAME_WIDTH / 2, 80);
+    this.powerUpContainer.setAlpha(0);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.4);
+    bg.fillRoundedRect(-70, -18, 140, 36, 8);
+    this.powerUpContainer.add(bg);
+
+    this.powerUpIcon = this.add.circle(-48, 0, 10, 0xFFFFFF);
+    this.powerUpContainer.add(this.powerUpIcon);
+
+    this.powerUpText = this.add.text(-30, 0, '', {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '14px',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0, 0.5);
+    this.powerUpContainer.add(this.powerUpText);
+
+    // Timer bar background
+    this.powerUpBarBg = this.add.graphics();
+    this.powerUpBarBg.fillStyle(0x333333, 0.6);
+    this.powerUpBarBg.fillRoundedRect(-50, 12, 100, 6, 3);
+    this.powerUpContainer.add(this.powerUpBarBg);
+
+    // Timer bar fill
+    this.powerUpBar = this.add.graphics();
+    this.powerUpContainer.add(this.powerUpBar);
+
+    this.powerUpDuration = 0;
+    this.powerUpStartTime = 0;
+  }
+
+  updatePowerUp(type, duration) {
+    if (!type) {
+      // Power-up expired
+      this.tweens.add({
+        targets: this.powerUpContainer,
+        alpha: 0,
+        duration: 300
+      });
+      this.powerUpDuration = 0;
+      return;
+    }
+
+    const labels = {
+      speed: 'SPEED',
+      doubleJump: 'DBL JUMP',
+      magnet: 'MAGNET'
+    };
+    const colors = {
+      speed: 0x42A5F5,
+      doubleJump: 0xFFFFFF,
+      magnet: 0xFFEB3B
+    };
+
+    this.powerUpIcon.setFillStyle(colors[type] || 0xFFFFFF);
+    this.powerUpText.setText(labels[type] || type);
+    this.powerUpDuration = duration;
+    this.powerUpStartTime = this.time.now;
+
+    // Show with pop
+    this.powerUpContainer.setAlpha(0).setScale(0.5);
+    this.tweens.add({
+      targets: this.powerUpContainer,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: 'Back.easeOut'
+    });
+
+    // Update timer bar
+    if (this.powerUpTimerEvent) this.powerUpTimerEvent.remove();
+    this.powerUpTimerEvent = this.time.addEvent({
+      delay: 50,
+      callback: () => {
+        const elapsed = this.time.now - this.powerUpStartTime;
+        const remaining = Math.max(0, 1 - elapsed / this.powerUpDuration);
+        this.powerUpBar.clear();
+        const barColor = remaining > 0.3 ? (colors[type] || 0xFFFFFF) : 0xFF4444;
+        this.powerUpBar.fillStyle(barColor, 0.9);
+        this.powerUpBar.fillRoundedRect(-50, 12, 100 * remaining, 6, 3);
+      },
+      loop: true
+    });
   }
 }

@@ -117,7 +117,8 @@ class AudioManagerClass {
       level_complete: this._sfxLevelComplete,
       game_over: this._sfxGameOver,
       menu_click: this._sfxMenuClick,
-      star_reveal: this._sfxStarReveal
+      star_reveal: this._sfxStarReveal,
+      powerup_collect: this._sfxPowerupCollect
     };
   }
 
@@ -228,6 +229,18 @@ class AudioManagerClass {
     this._osc('sine', 1200, t, 0.08, 0.15);
     this._osc('sine', 1600, t + 0.06, 0.08, 0.12);
     this._osc('sine', 2000, t + 0.12, 0.12, 0.1);
+  }
+
+  // Power-up collect — ascending magical chime
+  _sfxPowerupCollect() {
+    const t = this.ctx.currentTime;
+    this._osc('sine', 523, t, 0.1, 0.2);
+    this._osc('sine', 784, t + 0.08, 0.1, 0.2);
+    this._osc('sine', 1047, t + 0.16, 0.1, 0.25);
+    this._osc('sine', 1319, t + 0.24, 0.2, 0.2);
+    this._osc('triangle', 523, t, 0.1, 0.1);
+    this._osc('triangle', 784, t + 0.08, 0.1, 0.1);
+    this._osc('triangle', 1047, t + 0.16, 0.15, 0.12);
   }
 
   // ════════════════════════════════════════════

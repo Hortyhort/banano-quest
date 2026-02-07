@@ -46,7 +46,8 @@ export const LEVELS = [
     ],
     spikes: [
       { x: 680, y: 674 }, { x: 1050, y: 434 }, { x: 350, y: 334 }
-    ]
+    ],
+    questionBlocks: []
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -101,6 +102,10 @@ export const LEVELS = [
     spikes: [
       { x: 560, y: 674 }, { x: 420, y: 404 },
       { x: 850, y: 204 }, { x: 1100, y: 264 }
+    ],
+    questionBlocks: [
+      { x: 420, y: 370, powerUpType: 'speed' },
+      { x: 850, y: 170, powerUpType: 'magnet' }
     ],
     movingPlatforms: [
       { x: 630, y: 530, axis: 'x', range: 80, speed: 50, width: 100 }
@@ -168,6 +173,11 @@ export const LEVELS = [
       { x: 650, y: 674 }, { x: 400, y: 384 },
       { x: 900, y: 384 }, { x: 600, y: 274 }, { x: 750, y: 164 }
     ],
+    questionBlocks: [
+      { x: 550, y: 460, powerUpType: 'doubleJump' },
+      { x: 150, y: 350, powerUpType: 'speed' },
+      { x: 750, y: 130, powerUpType: 'magnet' }
+    ],
     movingPlatforms: [
       { x: 650, y: 455, axis: 'y', range: 50, speed: 40, width: 80 }
     ],
@@ -232,6 +242,15 @@ export const LEVELS = [
     spikes: [
       { x: 500, y: 604 }, { x: 600, y: 434 },
       { x: 400, y: 324 }, { x: 550, y: 164 }
+    ],
+    questionBlocks: [
+      { x: 300, y: 440, powerUpType: 'doubleJump' },
+      { x: 1020, y: 250, powerUpType: 'speed' },
+      { x: 550, y: 130, powerUpType: 'magnet' }
+    ],
+    flyingEnemies: [
+      { x: 500, y: 350, patrolDistance: 120, speed: 45, amplitude: 35 },
+      { x: 900, y: 250, patrolDistance: 100, speed: 50, amplitude: 40 }
     ],
     movingPlatforms: [
       { x: 550, y: 530, axis: 'x', range: 100, speed: 55, width: 100 },
@@ -308,6 +327,22 @@ export const LEVELS = [
       { x: 200, y: 444 }, { x: 580, y: 314 },
       { x: 1050, y: 294 }, { x: 520, y: 144 }
     ],
+    questionBlocks: [
+      { x: 200, y: 410, powerUpType: 'speed' },
+      { x: 680, y: 420, powerUpType: 'doubleJump' },
+      { x: 340, y: 250, powerUpType: 'magnet' },
+      { x: 1050, y: 260, powerUpType: 'speed' }
+    ],
+    flyingEnemies: [
+      { x: 600, y: 480, patrolDistance: 100, speed: 55, amplitude: 45 },
+      { x: 300, y: 250, patrolDistance: 80, speed: 50, amplitude: 35 },
+      { x: 900, y: 200, patrolDistance: 90, speed: 60, amplitude: 40 }
+    ],
+    chargingEnemies: [
+      { x: 1050, y: 578, detectionRange: 200, chargeSpeed: 220 },
+      { x: 450, y: 398, detectionRange: 180, chargeSpeed: 200 }
+    ],
+    boss: { x: 640, y: 48 },
     movingPlatforms: [
       { x: 460, y: 530, axis: 'x', range: 90, speed: 65, width: 90 },
       { x: 750, y: 380, axis: 'y', range: 70, speed: 50, width: 80 },

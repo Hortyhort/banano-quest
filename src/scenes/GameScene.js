@@ -13,6 +13,11 @@ import { Enemy } from '../sprites/Enemy.js';
 import { Spike } from '../sprites/Spike.js';
 import { MovingPlatform } from '../sprites/MovingPlatform.js';
 import { FallingPlatform } from '../sprites/FallingPlatform.js';
+import { QuestionBlock } from '../sprites/QuestionBlock.js';
+import { PowerUp } from '../sprites/PowerUp.js';
+import { FlyingEnemy } from '../sprites/FlyingEnemy.js';
+import { ChargingEnemy } from '../sprites/ChargingEnemy.js';
+import { Boss } from '../sprites/Boss.js';
 import { StorageService } from '../services/StorageService.js';
 import { AudioManager } from '../services/AudioManager.js';
 import { TouchControls } from '../ui/TouchControls.js';
@@ -73,6 +78,34 @@ export class GameScene extends Phaser.Scene {
     this.spikes = this.physics.add.staticGroup();
     this.createSpikes(ld.spikes);
 
+    // Question blocks (S5.1)
+    this.questionBlocks = this.physics.add.staticGroup();
+    if (ld.questionBlocks) {
+      this.createQuestionBlocks(ld.questionBlocks);
+    }
+
+    // Power-ups group
+    this.powerUps = this.physics.add.group({ allowGravity: false });
+
+    // Flying enemies (S5.3)
+    this.flyingEnemies = this.physics.add.group({ allowGravity: false });
+    if (ld.flyingEnemies) {
+      this.createFlyingEnemies(ld.flyingEnemies);
+    }
+
+    // Charging enemies (S5.4)
+    this.chargingEnemies = this.physics.add.group();
+    if (ld.chargingEnemies) {
+      this.createChargingEnemies(ld.chargingEnemies);
+    }
+
+    // Boss (S5.5)
+    this.boss = null;
+    this.bossDefeated = false;
+    if (ld.boss) {
+      this.createBoss(ld.boss);
+    }
+
     // Collisions
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.movingPlatforms, this.handleMovingPlatformCollide, null, this);
@@ -82,6 +115,18 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coins, this.handleCoinCollect, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.handleEnemyCollision, null, this);
     this.physics.add.overlap(this.player, this.spikes, this.handleSpikeHit, null, this);
+
+    // S5 collisions
+    this.physics.add.collider(this.player, this.questionBlocks, this.handleQuestionBlockHit, null, this);
+    this.physics.add.overlap(this.player, this.powerUps, this.handlePowerUpCollect, null, this);
+    this.physics.add.overlap(this.player, this.flyingEnemies, this.handleFlyingEnemyCollision, null, this);
+    this.physics.add.collider(this.flyingEnemies, this.platforms);
+    this.physics.add.overlap(this.player, this.chargingEnemies, this.handleChargingEnemyCollision, null, this);
+    this.physics.add.collider(this.chargingEnemies, this.platforms);
+    if (this.boss) {
+      this.physics.add.collider(this.boss, this.platforms);
+      this.physics.add.overlap(this.player, this.boss, this.handleBossCollision, null, this);
+    }
 
     // UI
     this.scene.launch('UIScene', { gameScene: this });
@@ -93,6 +138,7 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('updateLives', this.player.lives);
 
     this.events.on('gameOver', this.handleGameOver, this);
+    this.events.on('bossDefeated', this.handleBossDefeated, this);
 
     // Start gameplay music
     AudioManager.playMusic('gameplay');
@@ -501,6 +547,31 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  createQuestionBlocks(data) {
+    data.forEach(cfg => {
+      const qb = new QuestionBlock(this, cfg.x, cfg.y, cfg);
+      this.questionBlocks.add(qb);
+    });
+  }
+
+  createFlyingEnemies(data) {
+    data.forEach(cfg => {
+      const fe = new FlyingEnemy(this, cfg.x, cfg.y, cfg);
+      this.flyingEnemies.add(fe);
+    });
+  }
+
+  createChargingEnemies(data) {
+    data.forEach(cfg => {
+      const ce = new ChargingEnemy(this, cfg.x, cfg.y, cfg);
+      this.chargingEnemies.add(ce);
+    });
+  }
+
+  createBoss(data) {
+    this.boss = new Boss(this, data.x, data.y);
+  }
+
   // ════════════════════════════════════════════
   // PAUSE
   // ════════════════════════════════════════════
@@ -555,7 +626,7 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('updateScore', this.score);
     player.collectCoin();
     this.showFloatingScore(coin.x, coin.y, points);
-    if (this.collectedCoins >= this.totalCoins) {
+    if (this.collectedCoins >= this.totalCoins && !this.levelData.boss) {
       this.levelComplete();
     }
   }
@@ -581,6 +652,86 @@ export class GameScene extends Phaser.Scene {
   handleSpikeHit(player) {
     if (player.isDead) return;
     player.hit();
+  }
+
+  handleQuestionBlockHit(player, block) {
+    // Only trigger when player hits from below
+    if (!player.body.touching.up || !block.body.touching.down) return;
+    const powerUpType = block.hit(this);
+    if (powerUpType) {
+      const pu = new PowerUp(this, block.x, block.y, powerUpType);
+      this.powerUps.add(pu);
+    }
+  }
+
+  handlePowerUpCollect(player, powerUp) {
+    if (player.isDead) return;
+    const type = powerUp.collect();
+    player.applyPowerUp(type);
+    AudioManager.playSound('powerup_collect');
+    AudioManager.vibrate(20);
+    this.showFloatingScore(powerUp.x, powerUp.y, 0, type.toUpperCase());
+  }
+
+  handleFlyingEnemyCollision(player, enemy) {
+    if (player.isDead || !enemy.alive) return;
+    const isStomp = player.body.velocity.y > 0 &&
+      player.body.bottom < enemy.body.center.y + 5;
+    if (isStomp) {
+      const points = enemy.stomp();
+      this.score += points;
+      AudioManager.playSound('enemy_stomp');
+      AudioManager.vibrate(20);
+      this.cameraShake(80, 0.006);
+      this.events.emit('updateScore', this.score);
+      this.showFloatingScore(enemy.x, enemy.y, points);
+      player.body.setVelocityY(-300);
+    } else {
+      player.hit();
+    }
+  }
+
+  handleChargingEnemyCollision(player, enemy) {
+    if (player.isDead || !enemy.alive) return;
+    const isStomp = player.body.velocity.y > 0 &&
+      player.body.bottom < enemy.body.center.y + 5;
+    if (isStomp) {
+      const points = enemy.stomp();
+      this.score += points;
+      AudioManager.playSound('enemy_stomp');
+      AudioManager.vibrate(20);
+      this.cameraShake(80, 0.006);
+      this.events.emit('updateScore', this.score);
+      this.showFloatingScore(enemy.x, enemy.y, points);
+      player.body.setVelocityY(-300);
+    } else {
+      player.hit();
+    }
+  }
+
+  handleBossCollision(player, boss) {
+    if (player.isDead || !boss.alive) return;
+    const isStomp = player.body.velocity.y > 0 &&
+      player.body.bottom < boss.body.center.y + 5;
+    if (isStomp) {
+      const points = boss.stomp();
+      this.score += points;
+      if (points > 0) {
+        this.events.emit('updateScore', this.score);
+        this.showFloatingScore(boss.x, boss.y, points);
+      }
+      player.body.setVelocityY(-350);
+    } else {
+      player.hit();
+    }
+  }
+
+  handleBossDefeated() {
+    this.bossDefeated = true;
+    // Boss levels complete when boss is defeated
+    this.time.delayedCall(1200, () => {
+      this.levelComplete();
+    });
   }
 
   handleGameOver() {
@@ -662,8 +813,9 @@ export class GameScene extends Phaser.Scene {
   // UI HELPERS
   // ════════════════════════════════════════════
 
-  showFloatingScore(x, y, points) {
-    const t = this.add.text(x, y, `+${points}`, {
+  showFloatingScore(x, y, points, label) {
+    const text = label || `+${points}`;
+    const t = this.add.text(x, y, text, {
       fontFamily: 'Arial Black, Arial', fontSize: '24px',
       color: '#FFEB3B', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
@@ -836,6 +988,10 @@ export class GameScene extends Phaser.Scene {
     if (this.player && !this.player.isDead) this.player.update();
     this.enemies.getChildren().forEach(e => { if (e.active) e.update(); });
     this.movingPlatforms.getChildren().forEach(p => { if (p.active) p.update(); });
+    const delta = this.game.loop.delta;
+    this.flyingEnemies.getChildren().forEach(e => { if (e.active) e.update(null, delta); });
+    this.chargingEnemies.getChildren().forEach(e => { if (e.active) e.update(null, delta); });
+    if (this.boss && this.boss.alive) this.boss.update(null, delta);
 
     // S4.3: Tutorial
     this.updateTutorial();
@@ -847,6 +1003,20 @@ export class GameScene extends Phaser.Scene {
         const dir = this.player.body.velocity.x > 0 ? -1 : 1;
         this.spawnSpeedLines(this.player.x, this.player.y, dir);
       }
+    }
+
+    // S5.2: Magnet power-up — attract nearby coins
+    if (this.player && this.player.activePowerUp === 'magnet' && !this.player.isDead) {
+      this.coins.getChildren().forEach(coin => {
+        if (!coin.active) return;
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, coin.x, coin.y);
+        if (dist < 150) {
+          const angle = Phaser.Math.Angle.Between(coin.x, coin.y, this.player.x, this.player.y);
+          const pullSpeed = 200;
+          coin.x += Math.cos(angle) * pullSpeed * (delta / 1000);
+          coin.y += Math.sin(angle) * pullSpeed * (delta / 1000);
+        }
+      });
     }
 
     // Reset riding platform velocity each frame

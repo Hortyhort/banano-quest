@@ -114,8 +114,13 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    // Instructions
-    this.add.text(GAME_WIDTH / 2, 620, 'Arrow Keys or WASD to move | SPACE to jump', {
+    // Instructions — adapt for touch vs keyboard
+    const isTouchDevice = this.sys.game.device.input.touch;
+    const instructions = isTouchDevice
+      ? 'Use on-screen buttons to move and jump'
+      : 'Arrow Keys or WASD to move | SPACE to jump';
+
+    this.add.text(GAME_WIDTH / 2, 620, instructions, {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#FFFFFF',

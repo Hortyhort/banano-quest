@@ -22,6 +22,9 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
+  input: {
+    activePointers: 3
+  },
   scene: [BootScene, MenuScene, GameScene, UIScene]
 };
 

@@ -10,6 +10,7 @@ import {
 import { Player } from '../sprites/Player.js';
 import { Coin } from '../sprites/Coin.js';
 import { StorageService } from '../services/StorageService.js';
+import { TouchControls } from '../ui/TouchControls.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -34,6 +35,10 @@ export class GameScene extends Phaser.Scene {
 
     // Create player
     this.player = new Player(this, PLAYER.START_X, PLAYER.START_Y);
+
+    // Create touch controls (mobile only) and link to player
+    this.touchControls = new TouchControls(this);
+    this.player.touchControls = this.touchControls;
 
     // Create coins
     this.coins = this.physics.add.group();
@@ -295,10 +300,13 @@ export class GameScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setAlpha(0);
 
+    const isTouchDevice = this.sys.game.device.input.touch;
+    const continueLabel = isTouchDevice ? 'Tap to play again' : 'Press SPACE to play again';
+
     const continueText = this.add.text(
       GAME_WIDTH / 2,
       GAME_HEIGHT / 2 + 130,
-      'Press SPACE to play again',
+      continueLabel,
       {
         fontFamily: 'Arial',
         fontSize: '24px',
@@ -318,14 +326,28 @@ export class GameScene extends Phaser.Scene {
     // Update UI with new high score
     this.events.emit('updateHighScore', highScore);
 
-    // Wait for space to restart
-    this.input.keyboard.once('keydown-SPACE', () => {
+    // Hide touch controls during level-complete overlay
+    if (this.touchControls) {
+      this.touchControls.destroy();
+      this.touchControls = null;
+    }
+
+    const restart = () => {
       this.scene.stop('UIScene');
       this.scene.restart();
+    };
+
+    // Wait for space or tap to restart
+    this.input.keyboard.once('keydown-SPACE', restart);
+    this.time.delayedCall(800, () => {
+      this.input.once('pointerdown', restart);
     });
   }
 
   update() {
+    if (this.touchControls) {
+      this.touchControls.update();
+    }
     if (this.player) {
       this.player.update();
     }

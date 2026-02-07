@@ -18,6 +18,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.walkFrame = 0;
     this.walkTimer = 0;
 
+    // Touch controls reference (set externally)
+    this.touchControls = null;
+
     // Setup controls
     this.cursors = scene.input.keyboard.createCursorKeys();
     this.wasd = {
@@ -34,26 +37,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   update() {
     const onGround = this.body.blocked.down || this.body.touching.down;
+    const tc = this.touchControls;
 
     // Reset jump state when landing
     if (onGround) {
       this.isJumping = false;
     }
 
-    // Horizontal movement
-    if (this.cursors.left.isDown || this.wasd.left.isDown) {
+    // Horizontal movement (keyboard + touch)
+    const leftDown = this.cursors.left.isDown || this.wasd.left.isDown || (tc && tc.left);
+    const rightDown = this.cursors.right.isDown || this.wasd.right.isDown || (tc && tc.right);
+
+    if (leftDown) {
       this.body.setVelocityX(-PLAYER_SPEED);
       this.setFlipX(true);
-    } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
+    } else if (rightDown) {
       this.body.setVelocityX(PLAYER_SPEED);
       this.setFlipX(false);
     } else {
       this.body.setVelocityX(0);
     }
 
-    // Jump - edge detection for space key
+    // Jump - edge detection for space key + touch
     const jumpPressed = this.cursors.up.isDown || this.wasd.up.isDown || this.spaceKey.isDown;
-    const jumpJustPressed = jumpPressed && !this.spaceWasPressed;
+    const jumpJustPressed = (jumpPressed && !this.spaceWasPressed) || (tc && tc.jumpJustPressed);
 
     if (jumpJustPressed && onGround && !this.isJumping) {
       this.body.setVelocityY(PLAYER_JUMP_VELOCITY);

@@ -101,7 +101,11 @@ export const LEVELS = [
     spikes: [
       { x: 560, y: 674 }, { x: 420, y: 404 },
       { x: 850, y: 204 }, { x: 1100, y: 264 }
-    ]
+    ],
+    movingPlatforms: [
+      { x: 630, y: 530, axis: 'x', range: 80, speed: 50, width: 100 }
+    ],
+    fallingPlatforms: []
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -163,6 +167,13 @@ export const LEVELS = [
     spikes: [
       { x: 650, y: 674 }, { x: 400, y: 384 },
       { x: 900, y: 384 }, { x: 600, y: 274 }, { x: 750, y: 164 }
+    ],
+    movingPlatforms: [
+      { x: 650, y: 455, axis: 'y', range: 50, speed: 40, width: 80 }
+    ],
+    fallingPlatforms: [
+      { x: 400, y: 400, width: 80 },
+      { x: 1150, y: 400, width: 80 }
     ]
   },
 
@@ -221,6 +232,14 @@ export const LEVELS = [
     spikes: [
       { x: 500, y: 604 }, { x: 600, y: 434 },
       { x: 400, y: 324 }, { x: 550, y: 164 }
+    ],
+    movingPlatforms: [
+      { x: 550, y: 530, axis: 'x', range: 100, speed: 55, width: 100 },
+      { x: 200, y: 280, axis: 'y', range: 60, speed: 45, width: 90 }
+    ],
+    fallingPlatforms: [
+      { x: 600, y: 450, width: 80 },
+      { x: 1180, y: 430, width: 80 }
     ]
   },
 
@@ -288,6 +307,16 @@ export const LEVELS = [
       { x: 580, y: 604 }, { x: 680, y: 454 },
       { x: 200, y: 444 }, { x: 580, y: 314 },
       { x: 1050, y: 294 }, { x: 520, y: 144 }
+    ],
+    movingPlatforms: [
+      { x: 460, y: 530, axis: 'x', range: 90, speed: 65, width: 90 },
+      { x: 750, y: 380, axis: 'y', range: 70, speed: 50, width: 80 },
+      { x: 400, y: 200, axis: 'x', range: 80, speed: 70, width: 80 }
+    ],
+    fallingPlatforms: [
+      { x: 580, y: 620, width: 90 },
+      { x: 920, y: 420, width: 80 },
+      { x: 250, y: 180, width: 80 }
     ]
   }
 ];

@@ -7,28 +7,47 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Create loading bar
+    // S4.4: Branded splash background (shown immediately)
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x87CEEB, 0x87CEEB, 0x4FC3F7, 0x4FC3F7, 1);
+    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    const splashTitle = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, 'BANANO QUEST', {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '64px',
+      color: '#FFEB3B',
+      stroke: '#FF9800',
+      strokeThickness: 8
+    }).setOrigin(0.5);
+
+    const splashSub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10, 'Loading...', {
+      fontFamily: 'Arial',
+      fontSize: '22px',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5);
+
+    // Progress bar (only visible if loading takes > 0.3s)
     const progressBar = this.add.graphics();
     const progressBox = this.add.graphics();
-    progressBox.fillStyle(0x222222, 0.8);
-    progressBox.fillRect(GAME_WIDTH / 2 - 160, GAME_HEIGHT / 2 - 25, 320, 50);
-
-    const loadingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, 'Loading...', {
-      font: '24px Arial',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    progressBox.fillStyle(0x000000, 0.3);
+    progressBox.fillRoundedRect(GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 + 50, 300, 20, 10);
 
     this.load.on('progress', (value) => {
       progressBar.clear();
       progressBar.fillStyle(COLORS.BANANO_YELLOW, 1);
-      progressBar.fillRect(GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 - 15, 300 * value, 30);
+      progressBar.fillRoundedRect(GAME_WIDTH / 2 - 146, GAME_HEIGHT / 2 + 54, 292 * value, 12, 6);
     });
 
     this.load.on('complete', () => {
       progressBar.destroy();
       progressBox.destroy();
-      loadingText.destroy();
+      splashSub.setText('');
     });
+
+    // Store splash elements for transition
+    this.splashElements = { bg, splashTitle, splashSub };
 
     // Load monkey sprites
     this.load.svg('monkey', 'assets/monkey-0.svg', { width: 64, height: 78 });
@@ -163,6 +182,36 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start('MenuScene');
+    // S4.4: Show monkey on splash, hold for 1.5s, then fade to menu
+    const monkey = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 90, 'monkey');
+    monkey.setScale(2.5);
+
+    // Bounce the monkey
+    this.tweens.add({
+      targets: monkey,
+      y: monkey.y - 15,
+      duration: 500,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Animate title
+    this.tweens.add({
+      targets: this.splashElements.splashTitle,
+      y: this.splashElements.splashTitle.y - 10,
+      duration: 600,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // After 1.5s, fade out and go to menu
+    this.time.delayedCall(1500, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.time.delayedCall(500, () => {
+        this.scene.start('MenuScene');
+      });
+    });
   }
 }

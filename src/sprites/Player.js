@@ -33,6 +33,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Touch controls reference (set externally)
     this.touchControls = null;
 
+    // Moving platform velocity inheritance
+    this.ridingPlatformVx = 0;
+
     // Setup controls
     this.cursors = scene.input.keyboard.createCursorKeys();
     this.wasd = {
@@ -64,6 +67,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (onGround) {
       if (this.wasInAir) {
         AudioManager.playSound('land');
+        // S4.2: Dust puff on landing
+        if (this.scene.spawnDustPuff) {
+          this.scene.spawnDustPuff(this.x, this.body.bottom);
+        }
       }
       this.isJumping = false;
     }
@@ -74,13 +81,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const rightDown = this.cursors.right.isDown || this.wasd.right.isDown || (tc && tc.right);
 
     if (leftDown) {
-      this.body.setVelocityX(-PLAYER_SPEED);
+      this.body.setVelocityX(-PLAYER_SPEED + this.ridingPlatformVx);
       this.setFlipX(true);
     } else if (rightDown) {
-      this.body.setVelocityX(PLAYER_SPEED);
+      this.body.setVelocityX(PLAYER_SPEED + this.ridingPlatformVx);
       this.setFlipX(false);
     } else {
-      this.body.setVelocityX(0);
+      this.body.setVelocityX(this.ridingPlatformVx);
     }
 
     // Jump - edge detection for space key + touch
@@ -144,6 +151,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     AudioManager.playSound('player_death');
     AudioManager.vibrate([50, 30, 80]);
+
+    // S4.2: Death particles
+    if (this.scene.spawnDeathParticles) {
+      this.scene.spawnDeathParticles(this.x, this.y);
+    }
 
     // Stop movement
     this.body.setVelocity(0, 0);

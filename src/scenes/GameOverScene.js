@@ -9,6 +9,7 @@ export class GameOverScene extends Phaser.Scene {
 
   init(data) {
     this.finalScore = data.score || 0;
+    this.level = data.level || 1;
   }
 
   create() {
@@ -114,13 +115,22 @@ export class GameOverScene extends Phaser.Scene {
 
     this.input.keyboard.once('keydown-SPACE', () => this.playAgain());
 
-    // Hint text
-    const hint = isTouchDevice ? 'Tap to try again' : 'Press SPACE to try again';
-    this.add.text(GAME_WIDTH / 2, 640, hint, {
-      fontFamily: 'Arial',
+    // Level select button
+    const lsBtn = this.add.text(GAME_WIDTH / 2, 640, 'LEVEL SELECT', {
+      fontFamily: 'Arial Black, Arial',
       fontSize: '18px',
-      color: '#888888'
-    }).setOrigin(0.5);
+      color: '#888888',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    lsBtn.on('pointerover', () => lsBtn.setColor('#FFEB3B'));
+    lsBtn.on('pointerout', () => lsBtn.setColor('#888888'));
+    lsBtn.on('pointerdown', () => {
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.time.delayedCall(300, () => {
+        this.scene.start('LevelSelectScene');
+      });
+    });
 
     this.cameras.main.fadeIn(300);
   }
@@ -128,7 +138,7 @@ export class GameOverScene extends Phaser.Scene {
   playAgain() {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
-      this.scene.start('GameScene');
+      this.scene.start('GameScene', { level: this.level });
     });
   }
 }

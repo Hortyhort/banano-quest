@@ -6,7 +6,8 @@ const STORAGE_KEYS = {
   HIGH_SCORE: 'bananoquest_highscore',
   SETTINGS: 'bananoquest_settings',
   UNLOCKED_LEVELS: 'bananoquest_levels',
-  TOTAL_COINS: 'bananoquest_totalcoins'
+  TOTAL_COINS: 'bananoquest_totalcoins',
+  LEVEL_STARS: 'bananoquest_levelstars'
 };
 
 const DEFAULT_SETTINGS = {
@@ -75,6 +76,32 @@ class StorageServiceClass {
     if (level > current) {
       localStorage.setItem(STORAGE_KEYS.UNLOCKED_LEVELS, level.toString());
     }
+  }
+
+  // Per-level star ratings
+  getLevelStars(level) {
+    if (!this.isAvailable) return 0;
+    const data = localStorage.getItem(STORAGE_KEYS.LEVEL_STARS);
+    const stars = data ? JSON.parse(data) : {};
+    return stars[level] || 0;
+  }
+
+  setLevelStars(level, starCount) {
+    if (!this.isAvailable) return;
+    const data = localStorage.getItem(STORAGE_KEYS.LEVEL_STARS);
+    const stars = data ? JSON.parse(data) : {};
+    if (starCount > (stars[level] || 0)) {
+      stars[level] = starCount;
+      localStorage.setItem(STORAGE_KEYS.LEVEL_STARS, JSON.stringify(stars));
+      return true; // new best
+    }
+    return false;
+  }
+
+  getAllStars() {
+    if (!this.isAvailable) return {};
+    const data = localStorage.getItem(STORAGE_KEYS.LEVEL_STARS);
+    return data ? JSON.parse(data) : {};
   }
 
   // Settings

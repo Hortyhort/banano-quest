@@ -3,12 +3,9 @@ import {
   GAME_WIDTH,
   GAME_HEIGHT,
   COLORS,
-  PLAYER,
-  LEVEL_1_PLATFORMS,
-  LEVEL_1_COINS,
-  LEVEL_1_ENEMIES,
-  LEVEL_1_SPIKES
+  PLAYER
 } from '../config/gameConfig.js';
+import { LEVELS, TOTAL_LEVELS } from '../config/levels.js';
 import { Player } from '../sprites/Player.js';
 import { Coin } from '../sprites/Coin.js';
 import { Enemy } from '../sprites/Enemy.js';
@@ -19,119 +16,334 @@ import { TouchControls } from '../ui/TouchControls.js';
 export class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
+  }
+
+  init(data) {
+    this.levelNum = data.level || 1;
+    this.levelData = LEVELS[this.levelNum - 1];
     this.score = 0;
-    this.level = 1;
     this.totalCoins = 0;
     this.collectedCoins = 0;
     this.levelEnded = false;
   }
 
   create() {
-    // Reset state
-    this.score = 0;
-    this.collectedCoins = 0;
-    this.levelEnded = false;
+    const ld = this.levelData;
 
-    // Create background with gradient
-    this.createBackground();
+    // Themed background
+    this.createThemedBackground(ld.theme);
 
-    // Create platforms
+    // Platforms
     this.platforms = this.physics.add.staticGroup();
-    this.createPlatforms();
+    this.createPlatforms(ld.platforms, ld.theme);
 
-    // Create player
-    this.player = new Player(this, PLAYER.START_X, PLAYER.START_Y);
+    // Player at level-specific spawn
+    const spawn = ld.playerStart || PLAYER;
+    this.player = new Player(this, spawn.x, spawn.y);
 
-    // Create touch controls (mobile only) and link to player
+    // Touch controls
     this.touchControls = new TouchControls(this);
     this.player.touchControls = this.touchControls;
 
-    // Create coins
+    // Coins
     this.coins = this.physics.add.group();
-    this.createCoins();
+    this.createCoins(ld.coins);
 
-    // Create enemies
+    // Enemies
     this.enemies = this.physics.add.group();
-    this.createEnemies();
+    this.createEnemies(ld.enemies);
 
-    // Create spikes
+    // Spikes
     this.spikes = this.physics.add.staticGroup();
-    this.createSpikes();
+    this.createSpikes(ld.spikes);
 
-    // --- Collisions ---
+    // Collisions
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.enemies, this.platforms);
+    this.physics.add.overlap(this.player, this.coins, this.handleCoinCollect, null, this);
+    this.physics.add.overlap(this.player, this.enemies, this.handleEnemyCollision, null, this);
+    this.physics.add.overlap(this.player, this.spikes, this.handleSpikeHit, null, this);
 
-    // Player <-> Coins
-    this.physics.add.overlap(
-      this.player, this.coins,
-      this.handleCoinCollect, null, this
-    );
-
-    // Player <-> Enemies (stomp or damage)
-    this.physics.add.overlap(
-      this.player, this.enemies,
-      this.handleEnemyCollision, null, this
-    );
-
-    // Player <-> Spikes
-    this.physics.add.overlap(
-      this.player, this.spikes,
-      this.handleSpikeHit, null, this
-    );
-
-    // Launch UI scene
+    // UI
     this.scene.launch('UIScene', { gameScene: this });
-
-    // Camera fade in
     this.cameras.main.fadeIn(500);
 
-    // Emit initial state
     this.events.emit('updateScore', this.score);
-    this.events.emit('updateLevel', this.level);
+    this.events.emit('updateLevel', this.levelNum);
     this.events.emit('updateHighScore', StorageService.getHighScore());
     this.events.emit('updateLives', this.player.lives);
 
-    // Listen for game over from player
     this.events.on('gameOver', this.handleGameOver, this);
 
-    // --- Pause controls ---
+    // Pause
     this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.pKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-
-    // Create pause button (top-right, touch-friendly)
     this.createPauseButton();
 
-    // Auto-pause on tab/app blur
     this.visibilityHandler = () => {
       if (document.hidden && this.scene.isActive() && !this.levelEnded) {
         this.pauseGame();
       }
     };
     document.addEventListener('visibilitychange', this.visibilityHandler);
-
-    // Clean up on scene shutdown
     this.events.on('shutdown', () => {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
     });
   }
 
-  // ---- Pause ----
+  // ════════════════════════════════════════════
+  // THEMED BACKGROUND RENDERING
+  // ════════════════════════════════════════════
+
+  createThemedBackground(theme) {
+    const bg = this.add.graphics();
+    const [tl, tr, bl, br] = theme.skyGradient;
+    bg.fillGradientStyle(tl, tr, bl, br, 1);
+    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Decoration layer
+    switch (theme.decoration) {
+      case 'clouds': this.createClouds(); break;
+      case 'bubbles': this.createBubbles(); break;
+      case 'neonShapes': this.createNeonShapes(); break;
+      case 'snowflakes': this.createSnowflakes(); break;
+      case 'embers': this.createEmbers(); break;
+    }
+
+    // Hills (tinted per theme)
+    this.createThemedHills(theme.hillColors);
+  }
+
+  createClouds() {
+    const positions = [
+      { x: 100, y: 80, s: 1 }, { x: 400, y: 120, s: 0.8 },
+      { x: 700, y: 60, s: 1.2 }, { x: 1000, y: 100, s: 0.9 },
+      { x: 1200, y: 70, s: 1.1 }
+    ];
+    positions.forEach(c => {
+      const g = this.add.graphics();
+      g.fillStyle(0xFFFFFF, 0.8);
+      g.fillCircle(0, 0, 30 * c.s);
+      g.fillCircle(25 * c.s, -10 * c.s, 25 * c.s);
+      g.fillCircle(50 * c.s, 0, 30 * c.s);
+      g.fillCircle(25 * c.s, 10 * c.s, 20 * c.s);
+      g.setPosition(c.x, c.y);
+      this.tweens.add({
+        targets: g, x: g.x + 30,
+        duration: 4000 + Math.random() * 2000,
+        ease: 'Sine.easeInOut', yoyo: true, repeat: -1
+      });
+    });
+  }
+
+  createBubbles() {
+    for (let i = 0; i < 25; i++) {
+      const x = Phaser.Math.Between(0, GAME_WIDTH);
+      const y = Phaser.Math.Between(0, GAME_HEIGHT);
+      const r = Phaser.Math.Between(4, 14);
+      const g = this.add.graphics();
+      g.lineStyle(1.5, 0x81D4FA, 0.5);
+      g.strokeCircle(0, 0, r);
+      g.fillStyle(0xE1F5FE, 0.1);
+      g.fillCircle(0, 0, r);
+      // highlight
+      g.fillStyle(0xFFFFFF, 0.3);
+      g.fillCircle(-r * 0.3, -r * 0.3, r * 0.25);
+      g.setPosition(x, y);
+
+      this.tweens.add({
+        targets: g, y: g.y - Phaser.Math.Between(100, 300),
+        alpha: 0, duration: Phaser.Math.Between(4000, 8000),
+        delay: Phaser.Math.Between(0, 3000),
+        repeat: -1, onRepeat: () => {
+          g.setPosition(Phaser.Math.Between(0, GAME_WIDTH), GAME_HEIGHT + 20);
+          g.setAlpha(1);
+        }
+      });
+    }
+  }
+
+  createNeonShapes() {
+    const shapes = [
+      { x: 100, y: 100, type: 'ring' }, { x: 350, y: 200, type: 'diamond' },
+      { x: 600, y: 80, type: 'ring' }, { x: 850, y: 180, type: 'diamond' },
+      { x: 1100, y: 120, type: 'ring' }, { x: 200, y: 350, type: 'diamond' },
+      { x: 500, y: 300, type: 'ring' }, { x: 800, y: 350, type: 'diamond' },
+      { x: 1050, y: 300, type: 'ring' }
+    ];
+    const neonColors = [0xFF00FF, 0x00FFFF, 0xFFFF00, 0xFF4081, 0x00E5FF];
+
+    shapes.forEach((s, i) => {
+      const g = this.add.graphics();
+      const color = neonColors[i % neonColors.length];
+      g.lineStyle(2, color, 0.35);
+
+      if (s.type === 'ring') {
+        g.strokeCircle(0, 0, Phaser.Math.Between(15, 30));
+      } else {
+        const sz = Phaser.Math.Between(12, 22);
+        g.beginPath();
+        g.moveTo(0, -sz); g.lineTo(sz, 0);
+        g.lineTo(0, sz); g.lineTo(-sz, 0);
+        g.closePath(); g.strokePath();
+      }
+      g.setPosition(s.x, s.y);
+
+      this.tweens.add({
+        targets: g,
+        alpha: { from: 0.2, to: 0.6 },
+        angle: s.type === 'ring' ? 360 : 0,
+        duration: 2000 + i * 300,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+      });
+    });
+  }
+
+  createSnowflakes() {
+    for (let i = 0; i < 40; i++) {
+      const x = Phaser.Math.Between(0, GAME_WIDTH);
+      const y = Phaser.Math.Between(-50, GAME_HEIGHT);
+      const size = Phaser.Math.Between(2, 5);
+      const flake = this.add.circle(x, y, size, 0xFFFFFF, 0.7);
+
+      this.tweens.add({
+        targets: flake,
+        y: GAME_HEIGHT + 30,
+        x: flake.x + Phaser.Math.Between(-60, 60),
+        duration: Phaser.Math.Between(5000, 12000),
+        delay: Phaser.Math.Between(0, 4000),
+        repeat: -1,
+        onRepeat: () => {
+          flake.setPosition(Phaser.Math.Between(0, GAME_WIDTH), -10);
+        }
+      });
+    }
+  }
+
+  createEmbers() {
+    for (let i = 0; i < 30; i++) {
+      const x = Phaser.Math.Between(0, GAME_WIDTH);
+      const y = Phaser.Math.Between(GAME_HEIGHT * 0.5, GAME_HEIGHT);
+      const size = Phaser.Math.Between(2, 5);
+      const colors = [0xFF6D00, 0xFF9100, 0xFFAB00, 0xFF3D00];
+      const ember = this.add.circle(x, y, size, Phaser.Utils.Array.GetRandom(colors), 0.8);
+
+      this.tweens.add({
+        targets: ember,
+        y: Phaser.Math.Between(-50, GAME_HEIGHT * 0.3),
+        x: ember.x + Phaser.Math.Between(-80, 80),
+        alpha: 0,
+        duration: Phaser.Math.Between(3000, 7000),
+        delay: Phaser.Math.Between(0, 3000),
+        repeat: -1,
+        onRepeat: () => {
+          ember.setPosition(
+            Phaser.Math.Between(0, GAME_WIDTH),
+            Phaser.Math.Between(GAME_HEIGHT * 0.6, GAME_HEIGHT + 20)
+          );
+          ember.setAlpha(0.8);
+        }
+      });
+    }
+
+    // Lava glow at bottom
+    const lava = this.add.graphics();
+    lava.fillStyle(0xFF3D00, 0.15);
+    lava.fillRect(0, GAME_HEIGHT - 40, GAME_WIDTH, 40);
+    lava.fillStyle(0xFF6D00, 0.1);
+    lava.fillRect(0, GAME_HEIGHT - 20, GAME_WIDTH, 20);
+    this.tweens.add({
+      targets: lava, alpha: { from: 0.6, to: 1 },
+      duration: 800, yoyo: true, repeat: -1
+    });
+  }
+
+  createThemedHills(hillColors) {
+    const g = this.add.graphics();
+    g.fillStyle(hillColors[0], 0.4);
+    this.drawHill(g, 0, GAME_HEIGHT - 100, 300, 100);
+    this.drawHill(g, 250, GAME_HEIGHT - 80, 250, 80);
+    this.drawHill(g, 600, GAME_HEIGHT - 120, 350, 120);
+    this.drawHill(g, 950, GAME_HEIGHT - 90, 400, 90);
+
+    g.fillStyle(hillColors[1], 0.5);
+    this.drawHill(g, -50, GAME_HEIGHT - 60, 200, 60);
+    this.drawHill(g, 400, GAME_HEIGHT - 70, 280, 70);
+    this.drawHill(g, 800, GAME_HEIGHT - 50, 220, 50);
+    this.drawHill(g, 1100, GAME_HEIGHT - 80, 300, 80);
+  }
+
+  drawHill(graphics, x, y, width, height) {
+    graphics.beginPath();
+    graphics.moveTo(x, y);
+    graphics.quadraticCurveTo(x + width / 2, y - height, x + width, y);
+    graphics.closePath();
+    graphics.fillPath();
+  }
+
+  // ════════════════════════════════════════════
+  // ENTITY CREATION
+  // ════════════════════════════════════════════
+
+  createPlatforms(platformData, theme) {
+    platformData.forEach(platform => {
+      const isGround = platform.height > 32;
+      const texture = isGround ? 'ground' : 'platform';
+      const tileWidth = 64;
+      const tileHeight = isGround ? 64 : 32;
+      const tilesX = Math.ceil(platform.width / tileWidth);
+      const startX = platform.x - platform.width / 2;
+      const startY = platform.y - platform.height / 2;
+
+      for (let i = 0; i < tilesX; i++) {
+        const tile = this.platforms.create(
+          startX + i * tileWidth + tileWidth / 2,
+          startY + tileHeight / 2,
+          texture
+        );
+        tile.setDisplaySize(tileWidth, tileHeight);
+        if (isGround && theme.groundTint) tile.setTint(theme.groundTint);
+        else if (!isGround && theme.platformTint) tile.setTint(theme.platformTint);
+        tile.refreshBody();
+      }
+    });
+  }
+
+  createCoins(coinData) {
+    this.totalCoins = coinData.length;
+    coinData.forEach(pos => {
+      const coin = new Coin(this, pos.x, pos.y);
+      this.coins.add(coin);
+    });
+  }
+
+  createEnemies(enemyData) {
+    enemyData.forEach(cfg => {
+      const enemy = new Enemy(this, cfg.x, cfg.y, cfg);
+      this.enemies.add(enemy);
+    });
+  }
+
+  createSpikes(spikeData) {
+    spikeData.forEach(pos => {
+      const spike = new Spike(this, pos.x, pos.y);
+      this.spikes.add(spike);
+    });
+  }
+
+  // ════════════════════════════════════════════
+  // PAUSE
+  // ════════════════════════════════════════════
 
   createPauseButton() {
     const btn = this.add.container(GAME_WIDTH - 40, 80);
     btn.setDepth(900);
-
     const bg = this.add.graphics();
     bg.fillStyle(0x000000, 0.3);
     bg.fillRoundedRect(-25, -25, 50, 50, 10);
-
     const icon = this.add.text(0, 0, '| |', {
-      fontFamily: 'Arial Black, Arial',
-      fontSize: '22px',
-      color: '#FFFFFF'
+      fontFamily: 'Arial Black, Arial', fontSize: '22px', color: '#FFFFFF'
     }).setOrigin(0.5);
-
     btn.add([bg, icon]);
     btn.setSize(50, 50);
     btn.setInteractive({ useHandCursor: true });
@@ -145,127 +357,19 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch('PauseScene');
   }
 
-  // ---- Entity creation ----
-
-  createBackground() {
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x87CEEB, 0x87CEEB, 0xB3E5FC, 0xB3E5FC, 1);
-    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    this.createClouds();
-    this.createHills();
-  }
-
-  createClouds() {
-    const cloudPositions = [
-      { x: 100, y: 80, scale: 1 },
-      { x: 400, y: 120, scale: 0.8 },
-      { x: 700, y: 60, scale: 1.2 },
-      { x: 1000, y: 100, scale: 0.9 },
-      { x: 1200, y: 70, scale: 1.1 }
-    ];
-
-    cloudPositions.forEach(cloud => {
-      const g = this.add.graphics();
-      g.fillStyle(0xFFFFFF, 0.8);
-      g.fillCircle(0, 0, 30 * cloud.scale);
-      g.fillCircle(25 * cloud.scale, -10 * cloud.scale, 25 * cloud.scale);
-      g.fillCircle(50 * cloud.scale, 0, 30 * cloud.scale);
-      g.fillCircle(25 * cloud.scale, 10 * cloud.scale, 20 * cloud.scale);
-      g.setPosition(cloud.x, cloud.y);
-
-      this.tweens.add({
-        targets: g,
-        x: g.x + 30,
-        duration: 4000 + Math.random() * 2000,
-        ease: 'Sine.easeInOut',
-        yoyo: true,
-        repeat: -1
-      });
-    });
-  }
-
-  createHills() {
-    const hillGraphics = this.add.graphics();
-
-    hillGraphics.fillStyle(0x81C784, 0.5);
-    this.drawHill(hillGraphics, 0, GAME_HEIGHT - 100, 300, 100);
-    this.drawHill(hillGraphics, 250, GAME_HEIGHT - 80, 250, 80);
-    this.drawHill(hillGraphics, 600, GAME_HEIGHT - 120, 350, 120);
-    this.drawHill(hillGraphics, 950, GAME_HEIGHT - 90, 400, 90);
-
-    hillGraphics.fillStyle(0x66BB6A, 0.6);
-    this.drawHill(hillGraphics, -50, GAME_HEIGHT - 60, 200, 60);
-    this.drawHill(hillGraphics, 400, GAME_HEIGHT - 70, 280, 70);
-    this.drawHill(hillGraphics, 800, GAME_HEIGHT - 50, 220, 50);
-    this.drawHill(hillGraphics, 1100, GAME_HEIGHT - 80, 300, 80);
-  }
-
-  drawHill(graphics, x, y, width, height) {
-    graphics.beginPath();
-    graphics.moveTo(x, y);
-    graphics.quadraticCurveTo(x + width / 2, y - height, x + width, y);
-    graphics.closePath();
-    graphics.fillPath();
-  }
-
-  createPlatforms() {
-    LEVEL_1_PLATFORMS.forEach(platform => {
-      const isGround = platform.height > 32;
-      const texture = isGround ? 'ground' : 'platform';
-      const tileWidth = 64;
-      const tileHeight = isGround ? 64 : 32;
-
-      const tilesX = Math.ceil(platform.width / tileWidth);
-      const startX = platform.x - platform.width / 2;
-      const startY = platform.y - platform.height / 2;
-
-      for (let i = 0; i < tilesX; i++) {
-        const tile = this.platforms.create(
-          startX + i * tileWidth + tileWidth / 2,
-          startY + tileHeight / 2,
-          texture
-        );
-        tile.setDisplaySize(tileWidth, tileHeight);
-        tile.refreshBody();
-      }
-    });
-  }
-
-  createCoins() {
-    this.totalCoins = LEVEL_1_COINS.length;
-    LEVEL_1_COINS.forEach(coinPos => {
-      const coin = new Coin(this, coinPos.x, coinPos.y);
-      this.coins.add(coin);
-    });
-  }
-
-  createEnemies() {
-    LEVEL_1_ENEMIES.forEach(cfg => {
-      const enemy = new Enemy(this, cfg.x, cfg.y, cfg);
-      this.enemies.add(enemy);
-    });
-  }
-
-  createSpikes() {
-    LEVEL_1_SPIKES.forEach(pos => {
-      const spike = new Spike(this, pos.x, pos.y);
-      this.spikes.add(spike);
-    });
-  }
-
-  // ---- Collision handlers ----
+  // ════════════════════════════════════════════
+  // COLLISION HANDLERS
+  // ════════════════════════════════════════════
 
   handleCoinCollect(player, coin) {
     if (player.isDead) return;
     const points = coin.collect();
     this.score += points;
     this.collectedCoins++;
-
     StorageService.addCoins(1);
     this.events.emit('updateScore', this.score);
     player.collectCoin();
     this.showFloatingScore(coin.x, coin.y, points);
-
     if (this.collectedCoins >= this.totalCoins) {
       this.levelComplete();
     }
@@ -273,141 +377,137 @@ export class GameScene extends Phaser.Scene {
 
   handleEnemyCollision(player, enemy) {
     if (player.isDead || !enemy.alive) return;
-
-    // Stomp check: player is falling and player's feet are above enemy's center
     const isStomp = player.body.velocity.y > 0 &&
       player.body.bottom < enemy.body.center.y + 5;
-
     if (isStomp) {
       const points = enemy.stomp();
       this.score += points;
       this.events.emit('updateScore', this.score);
       this.showFloatingScore(enemy.x, enemy.y, points);
-
-      // Bounce player up
       player.body.setVelocityY(-300);
     } else {
-      // Player takes damage
       player.hit();
     }
   }
 
-  handleSpikeHit(player, spike) {
+  handleSpikeHit(player) {
     if (player.isDead) return;
     player.hit();
   }
 
   handleGameOver() {
     this.levelEnded = true;
-
-    // Save high score
     StorageService.setHighScore(this.score);
-
-    // Clean up touch controls
-    if (this.touchControls) {
-      this.touchControls.destroy();
-      this.touchControls = null;
-    }
-
-    // Transition to game over scene
+    if (this.touchControls) { this.touchControls.destroy(); this.touchControls = null; }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(600, () => {
       this.scene.stop('UIScene');
       this.scene.stop();
-      this.scene.start('GameOverScene', { score: this.score });
+      this.scene.start('GameOverScene', { score: this.score, level: this.levelNum });
     });
   }
 
-  // ---- UI helpers ----
+  // ════════════════════════════════════════════
+  // UI HELPERS
+  // ════════════════════════════════════════════
 
   showFloatingScore(x, y, points) {
-    const scoreText = this.add.text(x, y, `+${points}`, {
-      fontFamily: 'Arial Black, Arial',
-      fontSize: '24px',
-      color: '#FFEB3B',
-      stroke: '#000000',
-      strokeThickness: 4
+    const t = this.add.text(x, y, `+${points}`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '24px',
+      color: '#FFEB3B', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
-
     this.tweens.add({
-      targets: scoreText,
-      y: y - 60,
-      alpha: 0,
-      duration: 800,
-      ease: 'Power2',
-      onComplete: () => scoreText.destroy()
+      targets: t, y: y - 60, alpha: 0, duration: 800,
+      ease: 'Power2', onComplete: () => t.destroy()
     });
   }
+
+  // ════════════════════════════════════════════
+  // LEVEL COMPLETE — with star rating + next level
+  // ════════════════════════════════════════════
 
   levelComplete() {
     this.levelEnded = true;
 
-    const isNewHighScore = StorageService.setHighScore(this.score);
+    // Calculate stars
+    const pct = this.collectedCoins / this.totalCoins;
+    let stars = 1;
+    if (pct >= 0.75) stars = 2;
+    if (pct >= 1) stars = 3;
+
+    // Persist
+    StorageService.setHighScore(this.score);
+    StorageService.setLevelStars(this.levelNum, stars);
+    if (this.levelNum < TOTAL_LEVELS) {
+      StorageService.unlockLevel(this.levelNum + 1);
+    }
     const highScore = StorageService.getHighScore();
 
+    // Overlay
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2,
       GAME_WIDTH, GAME_HEIGHT, 0x000000, 0
     );
-    this.tweens.add({ targets: overlay, alpha: 0.5, duration: 500 });
+    this.tweens.add({ targets: overlay, alpha: 0.6, duration: 500 });
 
+    // Title
     const completeText = this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80,
-      'LEVEL COMPLETE!',
-      {
-        fontFamily: 'Arial Black, Arial',
-        fontSize: '64px',
-        color: '#FFEB3B',
-        stroke: '#FF9800',
-        strokeThickness: 8
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 - 120,
+      'LEVEL COMPLETE!', {
+        fontFamily: 'Arial Black, Arial', fontSize: '56px',
+        color: '#FFEB3B', stroke: '#FF9800', strokeThickness: 8
       }
     ).setOrigin(0.5).setAlpha(0);
 
-    if (isNewHighScore) {
-      const newHighText = this.add.text(
-        GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20,
-        'NEW HIGH SCORE!',
-        {
-          fontFamily: 'Arial Black, Arial',
-          fontSize: '32px',
-          color: '#00FF00',
-          stroke: '#000000',
-          strokeThickness: 4
-        }
-      ).setOrigin(0.5).setAlpha(0);
-
-      this.tweens.add({
-        targets: newHighText,
-        alpha: 1, scaleX: 1.2, scaleY: 1.2,
-        duration: 300, delay: 500,
-        yoyo: true, repeat: 2
-      });
+    // Star display — animated reveal
+    const starY = GAME_HEIGHT / 2 - 50;
+    const starTexts = [];
+    for (let i = 0; i < 3; i++) {
+      const filled = i < stars;
+      const s = this.add.text(GAME_WIDTH / 2 - 50 + i * 50, starY, filled ? '\u2605' : '\u2606', {
+        fontFamily: 'Arial', fontSize: '48px',
+        color: filled ? '#FFD700' : '#666666'
+      }).setOrigin(0.5).setAlpha(0).setScale(0);
+      starTexts.push(s);
     }
 
+    // Coins collected text
+    const coinText = this.add.text(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10,
+      `Coins: ${this.collectedCoins} / ${this.totalCoins}`, {
+        fontFamily: 'Arial', fontSize: '24px',
+        color: '#FFFFFF', stroke: '#000000', strokeThickness: 3
+      }
+    ).setOrigin(0.5).setAlpha(0);
+
+    // Score
     const scoreText = this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30,
-      `Score: ${this.score}`,
-      { fontFamily: 'Arial', fontSize: '36px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 4 }
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 45,
+      `Score: ${this.score}`, {
+        fontFamily: 'Arial', fontSize: '28px',
+        color: '#FFFFFF', stroke: '#000000', strokeThickness: 4
+      }
     ).setOrigin(0.5).setAlpha(0);
 
-    const highScoreText = this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 75,
-      `High Score: ${highScore}`,
-      { fontFamily: 'Arial', fontSize: '24px', color: '#FFD700', stroke: '#000000', strokeThickness: 3 }
-    ).setOrigin(0.5).setAlpha(0);
-
-    const isTouchDevice = this.sys.game.device.input.touch;
-    const continueLabel = isTouchDevice ? 'Tap to play again' : 'Press SPACE to play again';
-
-    const continueText = this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 130,
-      continueLabel,
-      { fontFamily: 'Arial', fontSize: '24px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 3 }
-    ).setOrigin(0.5).setAlpha(0);
-
+    // Animate in sequence
     this.tweens.add({
-      targets: [completeText, scoreText, highScoreText, continueText],
-      alpha: 1, duration: 500, delay: 300
+      targets: completeText, alpha: 1, duration: 400, delay: 200
+    });
+    this.tweens.add({
+      targets: [coinText, scoreText], alpha: 1, duration: 400, delay: 400
+    });
+
+    // Stars pop in one at a time
+    starTexts.forEach((s, i) => {
+      this.tweens.add({
+        targets: s, alpha: 1, scale: 1, duration: 300,
+        delay: 600 + i * 250, ease: 'Back.easeOut'
+      });
+    });
+
+    // Buttons — after animation
+    this.time.delayedCall(1500, () => {
+      this.createCompleteButtons();
     });
 
     this.events.emit('updateHighScore', highScore);
@@ -416,38 +516,65 @@ export class GameScene extends Phaser.Scene {
       this.touchControls.destroy();
       this.touchControls = null;
     }
+  }
 
-    const restart = () => {
+  createCompleteButtons() {
+    const btnY = GAME_HEIGHT / 2 + 120;
+    const hasNext = this.levelNum < TOTAL_LEVELS;
+
+    if (hasNext) {
+      this.createActionButton(GAME_WIDTH / 2 - 140, btnY, 'NEXT LEVEL', () => {
+        this.scene.stop('UIScene');
+        this.scene.restart({ level: this.levelNum + 1 });
+      });
+    }
+
+    this.createActionButton(
+      hasNext ? GAME_WIDTH / 2 + 10 : GAME_WIDTH / 2 - 65,
+      btnY, 'RETRY', () => {
+        this.scene.stop('UIScene');
+        this.scene.restart({ level: this.levelNum });
+      }
+    );
+
+    this.createActionButton(GAME_WIDTH / 2, btnY + 60, 'LEVEL SELECT', () => {
       this.scene.stop('UIScene');
-      this.scene.restart();
-    };
-
-    this.input.keyboard.once('keydown-SPACE', restart);
-    this.time.delayedCall(800, () => {
-      this.input.once('pointerdown', restart);
+      this.scene.stop();
+      this.scene.start('LevelSelectScene');
     });
   }
 
-  // ---- Game loop ----
+  createActionButton(x, y, label, callback) {
+    const container = this.add.container(x, y).setDepth(1000);
+    const w = 130;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x333333, 0.9);
+    bg.fillRoundedRect(-w / 2, -22, w, 44, 10);
+    bg.lineStyle(2, 0xFFEB3B, 0.6);
+    bg.strokeRoundedRect(-w / 2, -22, w, 44, 10);
+    const text = this.add.text(0, 0, label, {
+      fontFamily: 'Arial Black, Arial', fontSize: '16px', color: '#FFFFFF'
+    }).setOrigin(0.5);
+    container.add([bg, text]);
+    container.setSize(w, 44);
+    container.setInteractive({ useHandCursor: true });
+    container.on('pointerover', () => text.setColor('#FFEB3B'));
+    container.on('pointerout', () => text.setColor('#FFFFFF'));
+    container.on('pointerdown', callback);
+  }
+
+  // ════════════════════════════════════════════
+  // GAME LOOP
+  // ════════════════════════════════════════════
 
   update() {
-    // Pause key checks
     if (Phaser.Input.Keyboard.JustDown(this.pauseKey) ||
         Phaser.Input.Keyboard.JustDown(this.pKey)) {
       this.pauseGame();
       return;
     }
-
-    if (this.touchControls) {
-      this.touchControls.update();
-    }
-    if (this.player && !this.player.isDead) {
-      this.player.update();
-    }
-
-    // Update enemies
-    this.enemies.getChildren().forEach(enemy => {
-      if (enemy.active) enemy.update();
-    });
+    if (this.touchControls) this.touchControls.update();
+    if (this.player && !this.player.isDead) this.player.update();
+    this.enemies.getChildren().forEach(e => { if (e.active) e.update(); });
   }
 }

@@ -11,6 +11,7 @@ import { Coin } from '../sprites/Coin.js';
 import { Enemy } from '../sprites/Enemy.js';
 import { Spike } from '../sprites/Spike.js';
 import { StorageService } from '../services/StorageService.js';
+import { AudioManager } from '../services/AudioManager.js';
 import { TouchControls } from '../ui/TouchControls.js';
 
 export class GameScene extends Phaser.Scene {
@@ -74,6 +75,9 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('updateLives', this.player.lives);
 
     this.events.on('gameOver', this.handleGameOver, this);
+
+    // Start gameplay music
+    AudioManager.playMusic('gameplay');
 
     // Pause
     this.pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
@@ -367,6 +371,8 @@ export class GameScene extends Phaser.Scene {
     this.score += points;
     this.collectedCoins++;
     StorageService.addCoins(1);
+    AudioManager.playSound('coin_collect');
+    AudioManager.vibrate(15);
     this.events.emit('updateScore', this.score);
     player.collectCoin();
     this.showFloatingScore(coin.x, coin.y, points);
@@ -382,6 +388,8 @@ export class GameScene extends Phaser.Scene {
     if (isStomp) {
       const points = enemy.stomp();
       this.score += points;
+      AudioManager.playSound('enemy_stomp');
+      AudioManager.vibrate(20);
       this.events.emit('updateScore', this.score);
       this.showFloatingScore(enemy.x, enemy.y, points);
       player.body.setVelocityY(-300);
@@ -397,6 +405,8 @@ export class GameScene extends Phaser.Scene {
 
   handleGameOver() {
     this.levelEnded = true;
+    AudioManager.stopMusic();
+    AudioManager.playSound('game_over');
     StorageService.setHighScore(this.score);
     if (this.touchControls) { this.touchControls.destroy(); this.touchControls = null; }
     this.cameras.main.fadeOut(500, 0, 0, 0);
@@ -428,6 +438,8 @@ export class GameScene extends Phaser.Scene {
 
   levelComplete() {
     this.levelEnded = true;
+    AudioManager.stopMusic();
+    AudioManager.playSound('level_complete');
 
     // Calculate stars
     const pct = this.collectedCoins / this.totalCoins;
@@ -499,6 +511,9 @@ export class GameScene extends Phaser.Scene {
 
     // Stars pop in one at a time
     starTexts.forEach((s, i) => {
+      this.time.delayedCall(600 + i * 250, () => {
+        AudioManager.playSound('star_reveal');
+      });
       this.tweens.add({
         targets: s, alpha: 1, scale: 1, duration: 300,
         delay: 600 + i * 250, ease: 'Back.easeOut'

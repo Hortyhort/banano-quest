@@ -12,7 +12,8 @@ const STORAGE_KEYS = {
 
 const DEFAULT_SETTINGS = {
   soundEnabled: true,
-  musicEnabled: true
+  musicEnabled: true,
+  hapticsEnabled: true
 };
 
 class StorageServiceClass {

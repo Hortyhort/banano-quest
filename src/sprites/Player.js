@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY, PLAYER, GAME_HEIGHT } from '../config/gameConfig.js';
+import { AudioManager } from '../services/AudioManager.js';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -44,6 +45,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Track previous space state for edge detection
     this.spaceWasPressed = false;
+    this.wasInAir = false;
   }
 
   update() {
@@ -60,8 +62,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Reset jump state when landing
     if (onGround) {
+      if (this.wasInAir) {
+        AudioManager.playSound('land');
+      }
       this.isJumping = false;
     }
+    this.wasInAir = !onGround;
 
     // Horizontal movement (keyboard + touch)
     const leftDown = this.cursors.left.isDown || this.wasd.left.isDown || (tc && tc.left);
@@ -84,6 +90,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (jumpJustPressed && onGround && !this.isJumping) {
       this.body.setVelocityY(PLAYER_JUMP_VELOCITY);
       this.isJumping = true;
+      AudioManager.playSound('jump');
+      AudioManager.vibrate(10);
 
       // Squash and stretch effect
       this.scene.tweens.add({
@@ -133,6 +141,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.isDead) return;
     this.isDead = true;
     this.lives--;
+
+    AudioManager.playSound('player_death');
+    AudioManager.vibrate([50, 30, 80]);
 
     // Stop movement
     this.body.setVelocity(0, 0);

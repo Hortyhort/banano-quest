@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig.js';
 import { LEVELS, TOTAL_LEVELS } from '../config/levels.js';
 import { StorageService } from '../services/StorageService.js';
+import { AudioManager } from '../services/AudioManager.js';
 
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
@@ -168,6 +169,7 @@ export class LevelSelectScene extends Phaser.Scene {
         this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 100 });
       });
       container.on('pointerdown', () => {
+        AudioManager.playSound('menu_click');
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.time.delayedCall(400, () => {
           this.scene.start('GameScene', { level: levelNum });

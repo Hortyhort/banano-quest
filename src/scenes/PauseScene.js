@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig.js';
+import { AudioManager } from '../services/AudioManager.js';
 
 export class PauseScene extends Phaser.Scene {
   constructor() {
@@ -26,7 +27,11 @@ export class PauseScene extends Phaser.Scene {
     // Buttons
     this.createButton(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'RESUME', () => this.resumeGame());
     this.createButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 70, 'RESTART', () => this.restartGame());
-    this.createButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 140, 'QUIT', () => this.quitToMenu());
+    this.createButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 140, 'SETTINGS', () => {
+      AudioManager.playSound('menu_click');
+      this.scene.launch('SettingsScene', { returnTo: 'PauseScene' });
+    });
+    this.createButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 210, 'QUIT', () => this.quitToMenu());
 
     // ESC or P to resume
     this.input.keyboard.once('keydown-ESC', () => this.resumeGame());
@@ -58,17 +63,21 @@ export class PauseScene extends Phaser.Scene {
   }
 
   resumeGame() {
+    AudioManager.playSound('menu_click');
     this.scene.resume('GameScene');
     this.scene.stop();
   }
 
   restartGame() {
+    AudioManager.playSound('menu_click');
     this.scene.stop('UIScene');
     this.scene.stop();
     this.scene.get('GameScene').scene.restart();
   }
 
   quitToMenu() {
+    AudioManager.playSound('menu_click');
+    AudioManager.stopMusic();
     this.scene.stop('UIScene');
     this.scene.stop('GameScene');
     this.scene.stop();

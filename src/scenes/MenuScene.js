@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig.js';
+import { AudioManager } from '../services/AudioManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -108,6 +109,9 @@ export class MenuScene extends Phaser.Scene {
     });
 
     playButton.on('pointerdown', () => {
+      AudioManager.unlock();
+      AudioManager.playSound('menu_click');
+      AudioManager.stopMusic();
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.time.delayedCall(500, () => {
         this.scene.start('LevelSelectScene');
@@ -139,6 +143,38 @@ export class MenuScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1
     });
+
+    // Settings button (gear icon)
+    const settingsBtn = this.add.text(GAME_WIDTH - 50, 40, '\u2699', {
+      fontFamily: 'Arial',
+      fontSize: '36px',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    settingsBtn.on('pointerover', () => settingsBtn.setColor('#FFEB3B'));
+    settingsBtn.on('pointerout', () => settingsBtn.setColor('#FFFFFF'));
+    settingsBtn.on('pointerdown', () => {
+      AudioManager.unlock();
+      AudioManager.playSound('menu_click');
+      this.scene.launch('SettingsScene', { returnTo: 'MenuScene' });
+    });
+
+    // Start menu music (unlock on first interaction)
+    this.input.once('pointerdown', () => {
+      AudioManager.unlock();
+      AudioManager.playMusic('menu');
+    });
+    this.input.keyboard.once('keydown', () => {
+      AudioManager.unlock();
+      AudioManager.playMusic('menu');
+    });
+
+    // If already unlocked, start music immediately
+    if (AudioManager.unlocked) {
+      AudioManager.playMusic('menu');
+    }
 
     // Fade in
     this.cameras.main.fadeIn(500);

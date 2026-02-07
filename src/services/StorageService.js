@@ -7,7 +7,11 @@ const STORAGE_KEYS = {
   SETTINGS: 'bananoquest_settings',
   UNLOCKED_LEVELS: 'bananoquest_levels',
   TOTAL_COINS: 'bananoquest_totalcoins',
-  LEVEL_STARS: 'bananoquest_levelstars'
+  LEVEL_STARS: 'bananoquest_levelstars',
+  ACHIEVEMENTS: 'bananoquest_achievements',
+  STATS: 'bananoquest_stats',
+  SELECTED_SKIN: 'bananoquest_skin',
+  UNLOCKED_SKINS: 'bananoquest_skins'
 };
 
 const DEFAULT_SETTINGS = {
@@ -128,13 +132,115 @@ class StorageServiceClass {
     });
   }
 
-  // Get all stats for display
+  // ── Achievements ──
+  getAchievements() {
+    if (!this.isAvailable) return [];
+    const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+    return data ? JSON.parse(data) : [];
+  }
+
+  unlockAchievement(id) {
+    if (!this.isAvailable) return;
+    const current = this.getAchievements();
+    if (!current.includes(id)) {
+      current.push(id);
+      localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(current));
+    }
+  }
+
+  // ── Detailed Stats ──
   getStats() {
+    const defaults = {
+      highScore: this.getHighScore(),
+      totalCoins: this.getTotalCoins(),
+      unlockedLevels: this.getUnlockedLevels(),
+      totalDeaths: 0,
+      totalEnemiesStomped: 0,
+      totalPowerUps: 0,
+      totalPlayTime: 0,
+      levelBestTimes: {}
+    };
+    if (!this.isAvailable) return defaults;
+    const data = localStorage.getItem(STORAGE_KEYS.STATS);
+    const stored = data ? JSON.parse(data) : {};
     return {
+      ...defaults,
+      ...stored,
+      // Always pull live values for these
       highScore: this.getHighScore(),
       totalCoins: this.getTotalCoins(),
       unlockedLevels: this.getUnlockedLevels()
     };
+  }
+
+  updateStats(partial) {
+    if (!this.isAvailable) return;
+    const current = this.getStats();
+    const updated = { ...current, ...partial };
+    // Don't store the live values
+    delete updated.highScore;
+    delete updated.totalCoins;
+    delete updated.unlockedLevels;
+    localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(updated));
+  }
+
+  addDeath() {
+    const stats = this.getStats();
+    this.updateStats({ totalDeaths: stats.totalDeaths + 1 });
+  }
+
+  addEnemyStomp() {
+    const stats = this.getStats();
+    this.updateStats({ totalEnemiesStomped: stats.totalEnemiesStomped + 1 });
+  }
+
+  addPowerUp() {
+    const stats = this.getStats();
+    this.updateStats({ totalPowerUps: stats.totalPowerUps + 1 });
+  }
+
+  addPlayTime(seconds) {
+    const stats = this.getStats();
+    this.updateStats({ totalPlayTime: stats.totalPlayTime + seconds });
+  }
+
+  setLevelBestTime(level, time) {
+    const stats = this.getStats();
+    const best = stats.levelBestTimes[level];
+    if (!best || time < best) {
+      stats.levelBestTimes[level] = time;
+      this.updateStats({ levelBestTimes: stats.levelBestTimes });
+      return true;
+    }
+    return false;
+  }
+
+  // ── Skins ──
+  getSelectedSkin() {
+    if (!this.isAvailable) return 'default';
+    return localStorage.getItem(STORAGE_KEYS.SELECTED_SKIN) || 'default';
+  }
+
+  setSelectedSkin(skinId) {
+    if (!this.isAvailable) return;
+    localStorage.setItem(STORAGE_KEYS.SELECTED_SKIN, skinId);
+  }
+
+  getUnlockedSkins() {
+    if (!this.isAvailable) return ['default'];
+    const data = localStorage.getItem(STORAGE_KEYS.UNLOCKED_SKINS);
+    const skins = data ? JSON.parse(data) : ['default'];
+    if (!skins.includes('default')) skins.unshift('default');
+    return skins;
+  }
+
+  unlockSkin(skinId) {
+    if (!this.isAvailable) return;
+    const current = this.getUnlockedSkins();
+    if (!current.includes(skinId)) {
+      current.push(skinId);
+      localStorage.setItem(STORAGE_KEYS.UNLOCKED_SKINS, JSON.stringify(current));
+    }
   }
 }
 

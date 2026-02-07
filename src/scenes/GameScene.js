@@ -20,6 +20,7 @@ import { ChargingEnemy } from '../sprites/ChargingEnemy.js';
 import { Boss } from '../sprites/Boss.js';
 import { StorageService } from '../services/StorageService.js';
 import { AudioManager } from '../services/AudioManager.js';
+import { AchievementManager } from '../services/AchievementManager.js';
 import { TouchControls } from '../ui/TouchControls.js';
 
 export class GameScene extends Phaser.Scene {
@@ -34,6 +35,12 @@ export class GameScene extends Phaser.Scene {
     this.totalCoins = 0;
     this.collectedCoins = 0;
     this.levelEnded = false;
+
+    // S6 stats tracking
+    this.enemiesStomped = 0;
+    this.deathsThisLevel = 0;
+    this.powerUpsCollected = 0;
+    this.levelStartTime = 0;
   }
 
   create() {
@@ -139,6 +146,13 @@ export class GameScene extends Phaser.Scene {
 
     this.events.on('gameOver', this.handleGameOver, this);
     this.events.on('bossDefeated', this.handleBossDefeated, this);
+    this.events.on('updateLives', (lives) => {
+      // Track deaths (lives decrease = death happened)
+      if (lives < 3 - this.deathsThisLevel) {
+        this.deathsThisLevel = 3 - lives;
+        StorageService.addDeath();
+      }
+    });
 
     // Start gameplay music
     AudioManager.playMusic('gameplay');
@@ -163,6 +177,47 @@ export class GameScene extends Phaser.Scene {
 
     // ── S4.3: Tutorial (Level 1, first time only) ──
     this.setupTutorial();
+
+    // S6: Level timer
+    this.levelStartTime = this.time.now;
+
+    // S6.3: Apply skin tint
+    const skin = StorageService.getSelectedSkin();
+    this.applySkinTint(skin);
+  }
+
+  applySkinTint(skinId) {
+    const tints = {
+      default: null,
+      golden: 0xFFD700,
+      ice: 0x81D4FA,
+      lava: 0xFF6E40,
+      shadow: 0x9C27B0
+    };
+    const tint = tints[skinId];
+    if (tint && this.player) {
+      this.player.skinTint = tint;
+      this.player.setTint(tint);
+    }
+  }
+
+  checkSkinUnlocks() {
+    // Golden: 200 total coins
+    if (StorageService.getTotalCoins() >= 200) {
+      StorageService.unlockSkin('golden');
+    }
+    // Ice: Complete Level 4
+    if (StorageService.getUnlockedLevels() >= 5) {
+      StorageService.unlockSkin('ice');
+    }
+    // Lava: Complete Level 5
+    if (this.levelNum === 5) {
+      StorageService.unlockSkin('lava');
+    }
+    // Shadow: 8+ achievements
+    if (AchievementManager.getUnlocked().length >= 8) {
+      StorageService.unlockSkin('shadow');
+    }
   }
 
   // ════════════════════════════════════════════
@@ -638,6 +693,8 @@ export class GameScene extends Phaser.Scene {
     if (isStomp) {
       const points = enemy.stomp();
       this.score += points;
+      this.enemiesStomped++;
+      StorageService.addEnemyStomp();
       AudioManager.playSound('enemy_stomp');
       AudioManager.vibrate(20);
       this.cameraShake(80, 0.006);
@@ -668,6 +725,8 @@ export class GameScene extends Phaser.Scene {
     if (player.isDead) return;
     const type = powerUp.collect();
     player.applyPowerUp(type);
+    this.powerUpsCollected++;
+    StorageService.addPowerUp();
     AudioManager.playSound('powerup_collect');
     AudioManager.vibrate(20);
     this.showFloatingScore(powerUp.x, powerUp.y, 0, type.toUpperCase());
@@ -680,6 +739,8 @@ export class GameScene extends Phaser.Scene {
     if (isStomp) {
       const points = enemy.stomp();
       this.score += points;
+      this.enemiesStomped++;
+      StorageService.addEnemyStomp();
       AudioManager.playSound('enemy_stomp');
       AudioManager.vibrate(20);
       this.cameraShake(80, 0.006);
@@ -698,6 +759,8 @@ export class GameScene extends Phaser.Scene {
     if (isStomp) {
       const points = enemy.stomp();
       this.score += points;
+      this.enemiesStomped++;
+      StorageService.addEnemyStomp();
       AudioManager.playSound('enemy_stomp');
       AudioManager.vibrate(20);
       this.cameraShake(80, 0.006);
@@ -739,6 +802,11 @@ export class GameScene extends Phaser.Scene {
     AudioManager.stopMusic();
     AudioManager.playSound('game_over');
     StorageService.setHighScore(this.score);
+
+    // S6: Persist play time
+    const playTime = (this.time.now - this.levelStartTime) / 1000;
+    StorageService.addPlayTime(playTime);
+
     if (this.touchControls) { this.touchControls.destroy(); this.touchControls = null; }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(600, () => {
@@ -830,6 +898,7 @@ export class GameScene extends Phaser.Scene {
   // ════════════════════════════════════════════
 
   levelComplete() {
+    if (this.levelEnded) return;
     this.levelEnded = true;
     AudioManager.stopMusic();
     AudioManager.playSound('level_complete');
@@ -850,6 +919,27 @@ export class GameScene extends Phaser.Scene {
       StorageService.unlockLevel(this.levelNum + 1);
     }
     const highScore = StorageService.getHighScore();
+
+    // S6: Persist play time and best time
+    const levelTime = (this.time.now - this.levelStartTime) / 1000;
+    StorageService.addPlayTime(levelTime);
+    StorageService.setLevelBestTime(this.levelNum, levelTime);
+
+    // S6: Check skin unlocks
+    this.checkSkinUnlocks();
+
+    // S6: Check achievements
+    const context = {
+      levelCompleted: this.levelNum,
+      deathsThisLevel: this.deathsThisLevel,
+      powerUpCollected: this.powerUpsCollected > 0,
+      bossDefeated: this.bossDefeated,
+      levelTime
+    };
+    const newAchievements = AchievementManager.check(context);
+    if (newAchievements.length > 0) {
+      AchievementManager.showToasts(this, newAchievements);
+    }
 
     // Overlay
     const overlay = this.add.rectangle(

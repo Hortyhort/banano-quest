@@ -223,6 +223,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setAngle(0);
     this.clearTint();
 
+    // Reapply skin tint if set
+    if (this.skinTint) {
+      this.setTint(this.skinTint);
+    }
+
     // Re-enable physics
     this.body.enable = true;
     this.body.setVelocity(0, 0);

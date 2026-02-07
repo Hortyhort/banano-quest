@@ -161,6 +161,34 @@ export class MenuScene extends Phaser.Scene {
       this.scene.launch('SettingsScene', { returnTo: 'MenuScene' });
     });
 
+    // S6: Bottom menu row — Achievements, Stats, Skins
+    const menuY = 570;
+    const menuSpacing = 180;
+    const menuItems = [
+      { label: '\u{1F3C6} Achievements', scene: 'AchievementsScene' },
+      { label: '\u{1F4CA} Stats', scene: 'StatsScene' },
+      { label: '\u{1F3A8} Skins', scene: 'SkinsScene' }
+    ];
+
+    menuItems.forEach((item, i) => {
+      const x = GAME_WIDTH / 2 + (i - 1) * menuSpacing;
+      const btn = this.add.text(x, menuY, item.label, {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '18px',
+        color: '#FFFFFF',
+        stroke: '#000000',
+        strokeThickness: 3
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+      btn.on('pointerover', () => btn.setColor('#FFEB3B'));
+      btn.on('pointerout', () => btn.setColor('#FFFFFF'));
+      btn.on('pointerdown', () => {
+        AudioManager.unlock();
+        AudioManager.playSound('menu_click');
+        this.scene.start(item.scene);
+      });
+    });
+
     // Start menu music (unlock on first interaction)
     this.input.once('pointerdown', () => {
       AudioManager.unlock();

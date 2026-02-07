@@ -8,6 +8,9 @@ import { PauseScene } from './scenes/PauseScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 import { LevelSelectScene } from './scenes/LevelSelectScene.js';
 import { SettingsScene } from './scenes/SettingsScene.js';
+import { AchievementsScene } from './scenes/AchievementsScene.js';
+import { StatsScene } from './scenes/StatsScene.js';
+import { SkinsScene } from './scenes/SkinsScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -29,7 +32,7 @@ const config = {
   input: {
     activePointers: 3
   },
-  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, UIScene, PauseScene, GameOverScene, SettingsScene]
+  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, UIScene, PauseScene, GameOverScene, SettingsScene, AchievementsScene, StatsScene, SkinsScene]
 };
 
 const game = new Phaser.Game(config);

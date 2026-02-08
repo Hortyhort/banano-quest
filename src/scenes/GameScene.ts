@@ -6,6 +6,8 @@ import { Coin } from '../sprites/Coin.ts';
 import { Enemy } from '../sprites/Enemy.ts';
 import { StorageService } from '../services/StorageService.ts';
 import { AudioManager } from '../services/AudioManager.ts';
+import { HapticsService } from '../services/HapticsService.ts';
+import { QualityManager } from '../services/QualityManager.ts';
 
 const RESPAWN_DELAY = 1500;
 const PIT_DEATH_Y = 800;
@@ -144,8 +146,12 @@ export class GameScene extends Phaser.Scene {
     );
     bg.fillRect(0, 0, this.levelData.worldWidth, GAME_HEIGHT);
 
-    this.createClouds();
-    this.createHills();
+    if (QualityManager.shouldRenderClouds()) {
+      this.createClouds();
+    }
+    if (QualityManager.shouldRenderParallax()) {
+      this.createHills();
+    }
   }
 
   private createClouds() {
@@ -292,7 +298,8 @@ export class GameScene extends Phaser.Scene {
       g.fillRect(wz.x, wz.y, wz.width, wz.height);
 
       // Animated wind streaks
-      for (let i = 0; i < 5; i++) {
+      const streakCount = QualityManager.scaleParticles(5);
+      for (let i = 0; i < streakCount; i++) {
         const streak = this.add.rectangle(
           wz.x + Math.random() * wz.width,
           wz.y + Math.random() * wz.height,
@@ -397,6 +404,7 @@ export class GameScene extends Phaser.Scene {
   ) {
     if (this.player.getIsDead()) return;
     AudioManager.playSfx('spike');
+    HapticsService.spike();
     this.playerDeath();
   }
 
@@ -430,6 +438,7 @@ export class GameScene extends Phaser.Scene {
   private gameOver() {
     AudioManager.stopBgm();
     AudioManager.playSfx('gameOver');
+    HapticsService.gameOver();
     StorageService.setHighScore(this.score);
     const highScore = StorageService.getHighScore();
 
@@ -510,6 +519,7 @@ export class GameScene extends Phaser.Scene {
   private levelComplete() {
     AudioManager.stopBgm();
     AudioManager.playSfx('levelComplete');
+    HapticsService.levelComplete();
     this.levelActive = false;
 
     StorageService.setHighScore(this.score);

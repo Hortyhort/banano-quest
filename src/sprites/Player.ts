@@ -8,6 +8,9 @@ import {
   COLORS,
 } from '../config/gameConfig.ts';
 import { AudioManager } from '../services/AudioManager.ts';
+import { HapticsService } from '../services/HapticsService.ts';
+import { TouchInput } from '../services/TouchInput.ts';
+import { QualityManager } from '../services/QualityManager.ts';
 
 const WALK_FRAME_INTERVAL = 150;
 
@@ -69,6 +72,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setTint(0xff0000);
     this.scene.cameras.main.shake(200, 0.015);
     AudioManager.playSfx('death');
+    HapticsService.death();
 
     this.scene.tweens.add({
       targets: this,
@@ -96,12 +100,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Horizontal movement (friction-aware for ice)
-    const targetVx =
-      this.cursors.left.isDown || this.wasd.left.isDown
-        ? -PLAYER_SPEED
-        : this.cursors.right.isDown || this.wasd.right.isDown
-          ? PLAYER_SPEED
-          : 0;
+    const leftDown = this.cursors.left.isDown || this.wasd.left.isDown || TouchInput.left;
+    const rightDown = this.cursors.right.isDown || this.wasd.right.isDown || TouchInput.right;
+    const targetVx = leftDown ? -PLAYER_SPEED : rightDown ? PLAYER_SPEED : 0;
 
     if (this.friction < 1) {
       // Ice: lerp toward target (slide)
@@ -120,8 +121,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       if (onGround) this.emitDustParticle();
     }
 
-    // Jump input
-    const jumpPressed = this.cursors.up.isDown || this.wasd.up.isDown || this.spaceKey.isDown;
+    // Jump input (keyboard + touch)
+    const jumpPressed =
+      this.cursors.up.isDown || this.wasd.up.isDown || this.spaceKey.isDown || TouchInput.jump;
     const jumpJustPressed = jumpPressed && !this.spaceWasPressed;
 
     if (jumpJustPressed) {
@@ -152,6 +154,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocityY(PLAYER_JUMP_VELOCITY);
     this.isJumping = true;
     AudioManager.playSfx('jump');
+    HapticsService.jump();
 
     this.scene.tweens.add({
       targets: this,
@@ -168,6 +171,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const fallSpeed = Math.abs(this.lastVelocityY);
     const intensity = Math.min(fallSpeed / 600, 1);
     AudioManager.playSfx('land');
+    HapticsService.land();
 
     if (intensity > 0.2) {
       this.scene.tweens.add({
@@ -208,7 +212,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private emitJumpDust() {
-    for (let i = 0; i < 4; i++) {
+    const count = QualityManager.scaleParticles(4);
+    for (let i = 0; i < count; i++) {
       const dust = this.scene.add.circle(
         this.x + Phaser.Math.Between(-15, 15),
         this.y + 30,
@@ -229,7 +234,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private emitLandDust(intensity: number) {
-    const count = Math.floor(3 + intensity * 5);
+    const count = QualityManager.scaleParticles(Math.floor(3 + intensity * 5));
     for (let i = 0; i < count; i++) {
       const dust = this.scene.add.circle(
         this.x + Phaser.Math.Between(-20, 20),
@@ -271,6 +276,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   collectCoin() {
     AudioManager.playSfx('coinCollect');
+    HapticsService.coinCollect();
     this.scene.tweens.add({
       targets: this,
       scaleX: 1.3,
@@ -284,6 +290,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocityY(PLAYER_JUMP_VELOCITY * 0.6);
     this.isJumping = true;
     AudioManager.playSfx('stomp');
+    HapticsService.stomp();
 
     this.scene.tweens.add({
       targets: this,
@@ -293,7 +300,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       yoyo: true,
     });
 
-    for (let i = 0; i < 6; i++) {
+    const stompCount = QualityManager.scaleParticles(6);
+    for (let i = 0; i < stompCount; i++) {
       const star = this.scene.add.star(
         this.x + Phaser.Math.Between(-10, 10),
         this.y + 25,

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, COIN } from '../config/gameConfig.ts';
 import { generateEnemyTextures } from '../sprites/Enemy.ts';
+import { QualityManager } from '../services/QualityManager.ts';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -167,6 +168,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    QualityManager.init();
     this.scene.start('MenuScene');
   }
 }

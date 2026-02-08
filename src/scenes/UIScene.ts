@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH } from '../config/gameConfig.ts';
+import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig.ts';
 import { AudioManager } from '../services/AudioManager.ts';
+import { TouchInput, isTouchDevice } from '../services/TouchInput.ts';
 
 export class UIScene extends Phaser.Scene {
   private gameScene: Phaser.Scene | null = null;
@@ -26,6 +27,9 @@ export class UIScene extends Phaser.Scene {
     this.createLivesDisplay();
     this.createTimerDisplay();
     this.createMuteButton();
+    if (isTouchDevice()) {
+      this.createTouchControls();
+    }
 
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
@@ -205,5 +209,126 @@ export class UIScene extends Phaser.Scene {
         this.livesText.setColor('#FF1744');
       }
     }
+  }
+
+  // ─── Touch Controls ───
+
+  private createTouchControls() {
+    const btnAlpha = 0.25;
+    const btnActiveAlpha = 0.5;
+    const btnSize = 80;
+    const padding = 20;
+    const bottomY = GAME_HEIGHT - padding - btnSize / 2;
+
+    // Left button
+    this.createTouchButton(
+      padding + btnSize / 2,
+      bottomY,
+      btnSize,
+      '\u25C0',
+      btnAlpha,
+      btnActiveAlpha,
+      () => {
+        TouchInput.left = true;
+      },
+      () => {
+        TouchInput.left = false;
+      }
+    );
+
+    // Right button
+    this.createTouchButton(
+      padding + btnSize + padding + btnSize / 2,
+      bottomY,
+      btnSize,
+      '\u25B6',
+      btnAlpha,
+      btnActiveAlpha,
+      () => {
+        TouchInput.right = true;
+      },
+      () => {
+        TouchInput.right = false;
+      }
+    );
+
+    // Jump button (right side, larger)
+    const jumpSize = 100;
+    this.createTouchButton(
+      GAME_WIDTH - padding - jumpSize / 2,
+      bottomY - 10,
+      jumpSize,
+      '\u25B2',
+      btnAlpha,
+      btnActiveAlpha,
+      () => {
+        TouchInput.jump = true;
+      },
+      () => {
+        TouchInput.jump = false;
+      }
+    );
+
+    // Clear touch state when scene shuts down
+    this.events.on('shutdown', () => {
+      TouchInput.left = false;
+      TouchInput.right = false;
+      TouchInput.jump = false;
+    });
+  }
+
+  private createTouchButton(
+    x: number,
+    y: number,
+    size: number,
+    label: string,
+    alpha: number,
+    activeAlpha: number,
+    onDown: () => void,
+    onUp: () => void
+  ): Phaser.GameObjects.Container {
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, alpha);
+    bg.fillRoundedRect(-size / 2, -size / 2, size, size, 16);
+    bg.lineStyle(2, 0xffffff, alpha);
+    bg.strokeRoundedRect(-size / 2, -size / 2, size, size, 16);
+
+    const text = this.add
+      .text(0, 0, label, {
+        fontFamily: 'Arial',
+        fontSize: `${Math.floor(size * 0.4)}px`,
+        color: '#FFFFFF',
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.7);
+
+    const container = this.add.container(x, y, [bg, text]);
+    container.setSize(size, size);
+    container.setInteractive();
+
+    container.on('pointerdown', () => {
+      bg.clear();
+      bg.fillStyle(0xffffff, activeAlpha);
+      bg.fillRoundedRect(-size / 2, -size / 2, size, size, 16);
+      bg.lineStyle(2, 0xffffff, activeAlpha);
+      bg.strokeRoundedRect(-size / 2, -size / 2, size, size, 16);
+      text.setAlpha(1);
+      onDown();
+    });
+
+    const release = () => {
+      bg.clear();
+      bg.fillStyle(0x000000, alpha);
+      bg.fillRoundedRect(-size / 2, -size / 2, size, size, 16);
+      bg.lineStyle(2, 0xffffff, alpha);
+      bg.strokeRoundedRect(-size / 2, -size / 2, size, size, 16);
+      text.setAlpha(0.7);
+      onUp();
+    };
+
+    container.on('pointerup', release);
+    container.on('pointerout', release);
+
+    return container;
   }
 }

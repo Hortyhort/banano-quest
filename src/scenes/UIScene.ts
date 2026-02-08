@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config/gameConfig.ts';
+import { AudioManager } from '../services/AudioManager.ts';
 
 export class UIScene extends Phaser.Scene {
   private gameScene: Phaser.Scene | null = null;
@@ -7,6 +8,7 @@ export class UIScene extends Phaser.Scene {
   private highScoreText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
   private livesText!: Phaser.GameObjects.Text;
+  private muteButton!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -21,6 +23,7 @@ export class UIScene extends Phaser.Scene {
     this.createHighScoreDisplay();
     this.createLevelDisplay();
     this.createLivesDisplay();
+    this.createMuteButton();
 
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
@@ -116,6 +119,25 @@ export class UIScene extends Phaser.Scene {
         strokeThickness: 4,
       })
       .setOrigin(0, 0.5);
+  }
+
+  private createMuteButton() {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(GAME_WIDTH - 60, 680, 45, 30, 8);
+
+    this.muteButton = this.add
+      .text(GAME_WIDTH - 38, 695, AudioManager.isMuted() ? '\u{1F507}' : '\u{1F50A}', {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+
+    this.muteButton.on('pointerdown', () => {
+      const nowMuted = AudioManager.toggleMute();
+      this.muteButton.setText(nowMuted ? '\u{1F507}' : '\u{1F50A}');
+    });
   }
 
   private updateScore(score: number) {

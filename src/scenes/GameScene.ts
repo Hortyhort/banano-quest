@@ -5,6 +5,7 @@ import { Player } from '../sprites/Player.ts';
 import { Coin } from '../sprites/Coin.ts';
 import { Enemy } from '../sprites/Enemy.ts';
 import { StorageService } from '../services/StorageService.ts';
+import { AudioManager } from '../services/AudioManager.ts';
 
 const RESPAWN_DELAY = 1500;
 const PIT_DEATH_Y = 800;
@@ -90,6 +91,9 @@ export class GameScene extends Phaser.Scene {
 
     this.scene.launch('UIScene', { gameScene: this });
     this.cameras.main.fadeIn(500);
+
+    AudioManager.startBgm('gameplay');
+    AudioManager.resetCoinCombo();
 
     this.events.emit('updateScore', this.score);
     this.events.emit('updateLevel', this.levelIndex + 1);
@@ -284,6 +288,7 @@ export class GameScene extends Phaser.Scene {
     _spikeObj: Phaser.Types.Physics.Arcade.GameObjectWithBody
   ) {
     if (this.player.getIsDead()) return;
+    AudioManager.playSfx('spike');
     this.playerDeath();
   }
 
@@ -315,6 +320,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private gameOver() {
+    AudioManager.stopBgm();
+    AudioManager.playSfx('gameOver');
     const isNewHighScore = StorageService.setHighScore(this.score);
     const highScore = StorageService.getHighScore();
 
@@ -432,6 +439,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private levelComplete() {
+    AudioManager.stopBgm();
+    AudioManager.playSfx('levelComplete');
     const nextLevelIndex = this.levelIndex + 1;
     const hasNextLevel = nextLevelIndex < LEVELS.length;
 

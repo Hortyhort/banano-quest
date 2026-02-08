@@ -7,6 +7,7 @@ import {
   JUMP_CUT_MULTIPLIER,
   COLORS,
 } from '../config/gameConfig.ts';
+import { AudioManager } from '../services/AudioManager.ts';
 
 const WALK_FRAME_INTERVAL = 150;
 
@@ -62,6 +63,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocity(0, -300);
     this.setTint(0xff0000);
     this.scene.cameras.main.shake(200, 0.015);
+    AudioManager.playSfx('death');
 
     this.scene.tweens.add({
       targets: this,
@@ -132,6 +134,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private doJump() {
     this.body.setVelocityY(PLAYER_JUMP_VELOCITY);
     this.isJumping = true;
+    AudioManager.playSfx('jump');
 
     this.scene.tweens.add({
       targets: this,
@@ -147,6 +150,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private onLand() {
     const fallSpeed = Math.abs(this.lastVelocityY);
     const intensity = Math.min(fallSpeed / 600, 1);
+    AudioManager.playSfx('land');
 
     if (intensity > 0.2) {
       this.scene.tweens.add({
@@ -249,6 +253,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   collectCoin() {
+    AudioManager.playSfx('coinCollect');
     this.scene.tweens.add({
       targets: this,
       scaleX: 1.3,
@@ -261,6 +266,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   stompEnemy() {
     this.body.setVelocityY(PLAYER_JUMP_VELOCITY * 0.6);
     this.isJumping = true;
+    AudioManager.playSfx('stomp');
 
     this.scene.tweens.add({
       targets: this,

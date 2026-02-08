@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig.ts';
+import { AudioManager } from '../services/AudioManager.ts';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -110,6 +111,8 @@ export class MenuScene extends Phaser.Scene {
     });
 
     playButton.on('pointerdown', () => {
+      AudioManager.playSfx('menuSelect');
+      AudioManager.stopBgm();
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.time.delayedCall(500, () => {
         this.scene.start('GameScene');
@@ -138,5 +141,15 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(500);
+
+    // Start menu BGM on first user interaction (AudioContext policy)
+    const startAudio = () => {
+      AudioManager.init();
+      AudioManager.startBgm('menu');
+      this.input.off('pointerdown', startAudio);
+      this.input.keyboard!.off('keydown', startAudio);
+    };
+    this.input.on('pointerdown', startAudio);
+    this.input.keyboard!.on('keydown', startAudio);
   }
 }

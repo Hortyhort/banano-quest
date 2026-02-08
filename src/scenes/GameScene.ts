@@ -16,6 +16,7 @@ import { SkinService } from '../services/SkinService.ts';
 import { WalletBridge } from '../services/WalletBridge.ts';
 import { LeaderboardService } from '../services/LeaderboardService.ts';
 import { ShareService } from '../services/ShareService.ts';
+import { AnalyticsService } from '../services/AnalyticsService.ts';
 
 const RESPAWN_DELAY = 1500;
 const PIT_DEATH_Y = 800;
@@ -54,6 +55,8 @@ export class GameScene extends Phaser.Scene {
   private levelData!: LevelData;
   private theme!: WorldTheme;
   private isRespawning = false;
+  private isPaused = false;
+  private pauseOverlay: Phaser.GameObjects.Container | null = null;
   private crumblingSet = new Set<Phaser.Physics.Arcade.Sprite>();
   private windZones: WindZoneData[] = [];
 
@@ -93,6 +96,8 @@ export class GameScene extends Phaser.Scene {
     this.elapsedTime = 0;
     this.levelActive = true;
     this.isRespawning = false;
+    this.isPaused = false;
+    this.pauseOverlay = null;
     this.crumblingSet.clear();
   }
 
@@ -180,6 +185,16 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('updateHighScore', StorageService.getHighScore());
     this.events.emit('updateLives', this.lives);
     this.events.emit('updateTimer', 0);
+
+    // Analytics
+    AnalyticsService.trackLevelStart(this.worldIndex, this.levelIndex);
+
+    // Pause on ESC during gameplay
+    this.input.keyboard!.on('keydown-ESC', () => {
+      if (this.levelActive && !this.isRespawning) {
+        this.togglePause();
+      }
+    });
   }
 
   // ─── Background ───
@@ -418,6 +433,7 @@ export class GameScene extends Phaser.Scene {
     this.collectedCoins++;
 
     StorageService.addCoins(1);
+    AnalyticsService.trackCoinCollect(1);
     this.events.emit('updateScore', this.score);
     player.collectCoin();
     this.showFloatingScore(coin.x, coin.y, points);
@@ -444,6 +460,7 @@ export class GameScene extends Phaser.Scene {
       this.events.emit('updateScore', this.score);
       player.stompEnemy();
       this.showFloatingScore(enemy.x, enemy.y, points);
+      AnalyticsService.trackStomp();
       AchievementService.increment('stomp_1');
       AchievementService.increment('stomp_25');
       AchievementService.increment('stomp_100');
@@ -467,6 +484,7 @@ export class GameScene extends Phaser.Scene {
   private playerDeath() {
     if (this.isRespawning) return;
     this.isRespawning = true;
+    AnalyticsService.trackDeath(this.worldIndex, this.levelIndex);
     this.levelActive = false;
     this.deathCount++;
     this.lives--;
@@ -586,7 +604,7 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({ targets: texts, alpha: 1, duration: 500, delay: 300 });
 
-    this.input.keyboard!.once('keydown-SPACE', () => {
+    const retryGameOver = () => {
       this.scene.stop('UIScene');
       this.scene.restart({
         worldIndex: this.worldIndex,
@@ -594,10 +612,17 @@ export class GameScene extends Phaser.Scene {
         score: 0,
         lives: MAX_LIVES,
       });
-    });
+    };
+
+    this.input.keyboard!.once('keydown-SPACE', retryGameOver);
     this.input.keyboard!.once('keydown-ESC', () => {
       this.scene.stop('UIScene');
       this.scene.start('LevelSelectScene');
+    });
+
+    // Touch: tap to retry (delayed to avoid accidental taps)
+    this.time.delayedCall(1000, () => {
+      this.input.once('pointerdown', retryGameOver);
     });
   }
 
@@ -619,6 +644,10 @@ export class GameScene extends Phaser.Scene {
     if (gotAllCoins && underPar) stars = 3;
 
     StorageService.setLevelStars(this.worldIndex, this.levelIndex, stars);
+
+    // Analytics
+    AnalyticsService.trackLevelComplete(this.worldIndex, this.levelIndex, this.score, stars);
+    AnalyticsService.updatePlaytime();
 
     // Achievements
     AchievementService.increment('play_5');
@@ -811,7 +840,7 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({ targets: texts, alpha: 1, duration: 500, delay: 300 });
 
-    this.input.keyboard!.once('keydown-SPACE', () => {
+    const advanceLevel = () => {
       this.scene.stop('UIScene');
       if (hasNext) {
         let nextWorld = this.worldIndex;
@@ -829,10 +858,17 @@ export class GameScene extends Phaser.Scene {
       } else {
         this.scene.start('LevelSelectScene');
       }
-    });
+    };
+
+    this.input.keyboard!.once('keydown-SPACE', advanceLevel);
     this.input.keyboard!.once('keydown-ESC', () => {
       this.scene.stop('UIScene');
       this.scene.start('LevelSelectScene');
+    });
+
+    // Touch: tap to advance (delayed to avoid accidental taps on claim/share)
+    this.time.delayedCall(1500, () => {
+      this.input.once('pointerdown', advanceLevel);
     });
   }
 
@@ -867,9 +903,117 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ─── Pause menu ───
+
+  private togglePause() {
+    if (this.isPaused) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
+  }
+
+  private pauseGame() {
+    this.isPaused = true;
+    this.physics.pause();
+
+    const overlay = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6)
+      .setScrollFactor(0);
+
+    const pauseTitle = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'PAUSED', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '56px',
+        color: '#FFEB3B',
+        stroke: '#FF9800',
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0);
+
+    const resumeBtn = this.createPauseButton(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 - 10,
+      'RESUME',
+      0x4caf50
+    );
+    const restartBtn = this.createPauseButton(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2 + 50,
+      'RESTART',
+      0xff9800
+    );
+    const quitBtn = this.createPauseButton(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 110, 'QUIT', 0xff1744);
+
+    this.pauseOverlay = this.add.container(0, 0, [
+      overlay,
+      pauseTitle,
+      resumeBtn,
+      restartBtn,
+      quitBtn,
+    ]);
+
+    resumeBtn.on('pointerdown', () => this.resumeGame());
+    restartBtn.on('pointerdown', () => {
+      this.resumeGame();
+      this.scene.stop('UIScene');
+      this.scene.restart({
+        worldIndex: this.worldIndex,
+        levelIndex: this.levelIndex,
+        score: 0,
+        lives: MAX_LIVES,
+      });
+    });
+    quitBtn.on('pointerdown', () => {
+      this.resumeGame();
+      AudioManager.stopBgm();
+      this.scene.stop('UIScene');
+      this.scene.start('LevelSelectScene');
+    });
+  }
+
+  private resumeGame() {
+    this.isPaused = false;
+    this.physics.resume();
+    if (this.pauseOverlay) {
+      this.pauseOverlay.destroy();
+      this.pauseOverlay = null;
+    }
+  }
+
+  private createPauseButton(
+    x: number,
+    y: number,
+    label: string,
+    color: number
+  ): Phaser.GameObjects.Container {
+    const bg = this.add.graphics();
+    bg.fillStyle(color, 0.9);
+    bg.fillRoundedRect(-90, -20, 180, 40, 10);
+
+    const text = this.add
+      .text(0, 0, label, {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '22px',
+        color: '#FFFFFF',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
+
+    const container = this.add.container(x, y, [bg, text]);
+    container.setSize(180, 40);
+    container.setInteractive({ useHandCursor: true });
+    container.setScrollFactor(0);
+    return container;
+  }
+
   // ─── Update loop ───
 
   update(time: number, delta: number) {
+    if (this.isPaused) return;
+
     if (this.player && !this.player.getIsDead()) {
       this.player.update(time, delta);
 

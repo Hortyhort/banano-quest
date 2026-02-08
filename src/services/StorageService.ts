@@ -153,7 +153,7 @@ class StorageServiceClass {
     Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
-    // Also clear Phase 5 + 6 service keys
+    // Also clear service keys from all phases
     const extraKeys = [
       'bananoquest_achievements',
       'bananoquest_daily',
@@ -161,6 +161,7 @@ class StorageServiceClass {
       'bananoquest_skins',
       'bananoquest_wallet',
       'bananoquest_leaderboard',
+      'bananoquest_analytics',
     ];
     extraKeys.forEach((key) => localStorage.removeItem(key));
   }

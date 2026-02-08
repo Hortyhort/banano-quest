@@ -1,0 +1,19 @@
+{
+  "name": "Banano Quest",
+  "short_name": "BananoQuest",
+  "description": "A 2D platformer where a monkey collects Banano coins across Jungle, Ice, and Sky worlds",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1a1a2e",
+  "theme_color": "#FFEB3B",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/assets/monkey-0.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

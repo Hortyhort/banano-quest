@@ -3,35 +3,109 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS, COIN } from '../config/gameConfig.ts';
 import { generateEnemyTextures } from '../sprites/Enemy.ts';
 import { QualityManager } from '../services/QualityManager.ts';
 
+const VERSION = '2.0.0';
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super({ key: 'BootScene' });
   }
 
   preload() {
-    const progressBar = this.add.graphics();
+    // Background
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x1a1a2e, 0x1a1a2e, 0x16213e, 0x16213e, 1);
+    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Title
+    this.add
+      .text(GAME_WIDTH / 2 + 3, GAME_HEIGHT / 2 - 123, 'BANANO QUEST', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '52px',
+        color: '#000000',
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.3);
+
+    const title = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 125, 'BANANO QUEST', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '52px',
+        color: '#FFEB3B',
+        stroke: '#FF9800',
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: title,
+      y: title.y + 5,
+      duration: 800,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Version
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 75, `v${VERSION}`, {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#888888',
+      })
+      .setOrigin(0.5);
+
+    // Progress bar background
+    const barWidth = 400;
+    const barHeight = 20;
+    const barX = GAME_WIDTH / 2 - barWidth / 2;
+    const barY = GAME_HEIGHT / 2;
+
     const progressBox = this.add.graphics();
     progressBox.fillStyle(0x222222, 0.8);
-    progressBox.fillRect(GAME_WIDTH / 2 - 160, GAME_HEIGHT / 2 - 25, 320, 50);
+    progressBox.fillRoundedRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10, 8);
 
+    const progressBar = this.add.graphics();
+
+    // Loading text
     const loadingText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, 'Loading...', {
-        font: '24px Arial',
-        color: '#ffffff',
+      .text(GAME_WIDTH / 2, barY + 40, 'Loading assets...', {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        color: '#AAAAAA',
+      })
+      .setOrigin(0.5);
+
+    // Percentage text
+    const percentText = this.add
+      .text(GAME_WIDTH / 2, barY + barHeight / 2, '0%', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '14px',
+        color: '#FFFFFF',
       })
       .setOrigin(0.5);
 
     this.load.on('progress', (value: number) => {
       progressBar.clear();
       progressBar.fillStyle(COLORS.BANANO_YELLOW, 1);
-      progressBar.fillRect(GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 - 15, 300 * value, 30);
+      progressBar.fillRoundedRect(barX, barY, barWidth * value, barHeight, 6);
+      percentText.setText(`${Math.round(value * 100)}%`);
     });
 
     this.load.on('complete', () => {
       progressBar.destroy();
       progressBox.destroy();
-      loadingText.destroy();
+      loadingText.setText('Ready!');
+      percentText.destroy();
     });
+
+    // Copyright
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 30, 'Powered by Phaser 3 + Banano', {
+        fontFamily: 'Arial',
+        fontSize: '14px',
+        color: '#555555',
+      })
+      .setOrigin(0.5);
 
     this.load.svg('monkey', 'assets/monkey-0.svg', { width: 64, height: 78 });
     this.load.svg('monkey-walk-1', 'assets/monkey-1.svg', { width: 64, height: 78 });
@@ -46,6 +120,7 @@ export class BootScene extends Phaser.Scene {
     this.generateCoinTexture();
     this.generatePlatformTexture();
     this.generateGroundTexture();
+    this.generateSpikeTexture();
   }
 
   private generateCoinTexture() {
@@ -53,32 +128,18 @@ export class BootScene extends Phaser.Scene {
     const d = r * 2;
     const g = this.add.graphics({ x: 0, y: 0 }).setVisible(false);
 
-    // Outer ring — dark gold
     g.fillStyle(0xffa000);
     g.fillCircle(r, r, r);
-
-    // Main body — bright banano yellow
     g.fillStyle(COLORS.BANANO_YELLOW);
     g.fillCircle(r, r, r - 2);
-
-    // Inner highlight — lighter yellow crescent
     g.fillStyle(0xfff176);
     g.fillCircle(r - 3, r - 3, r - 6);
-
-    // "B" mark in center — dark gold
     g.fillStyle(0xffa000);
-    // Vertical bar of B
     g.fillRect(r - 4, r - 6, 3, 12);
-    // Top bump of B
     g.fillRoundedRect(r - 4, r - 6, 8, 6, 3);
-    // Bottom bump of B
     g.fillRoundedRect(r - 4, r, 9, 6, 3);
-
-    // Specular highlight — small white dot
     g.fillStyle(0xffffff, 0.6);
     g.fillCircle(r - 5, r - 5, 3);
-
-    // Outer stroke
     g.lineStyle(2, 0xe68a00);
     g.strokeCircle(r, r, r - 1);
 
@@ -89,34 +150,23 @@ export class BootScene extends Phaser.Scene {
   private generatePlatformTexture() {
     const g = this.add.graphics({ x: 0, y: 0 }).setVisible(false);
 
-    // Base fill — earthy brown
     g.fillStyle(0x6d4c41);
     g.fillRect(0, 10, 64, 22);
-
-    // Top grass layer — bright green
     g.fillStyle(COLORS.GRASS_GREEN);
     g.fillRect(0, 0, 64, 14);
-
-    // Grass highlights — lighter patches
     g.fillStyle(0x66bb6a);
     g.fillRect(0, 0, 64, 8);
-
-    // Grass tufts — darker tips
     g.fillStyle(0x388e3c);
     for (let i = 0; i < 8; i++) {
       const tx = i * 8 + 1;
       g.fillTriangle(tx, 4, tx + 3, 0, tx + 6, 4);
     }
-
-    // Dirt detail — small lighter brown dots
     g.fillStyle(0x8d6e63);
     g.fillRect(5, 16, 3, 2);
     g.fillRect(18, 20, 2, 2);
     g.fillRect(35, 15, 3, 3);
     g.fillRect(50, 22, 2, 2);
     g.fillRect(58, 18, 3, 2);
-
-    // Bottom shadow
     g.fillStyle(0x4e342e);
     g.fillRect(0, 28, 64, 4);
 
@@ -127,38 +177,25 @@ export class BootScene extends Phaser.Scene {
   private generateGroundTexture() {
     const g = this.add.graphics({ x: 0, y: 0 }).setVisible(false);
 
-    // Deep soil
     g.fillStyle(0x4e342e);
     g.fillRect(0, 0, 64, 64);
-
-    // Upper soil layer
     g.fillStyle(0x6d4c41);
     g.fillRect(0, 0, 64, 48);
-
-    // Top grass strip
     g.fillStyle(COLORS.GRASS_GREEN);
     g.fillRect(0, 0, 64, 14);
-
-    // Grass highlight
     g.fillStyle(0x66bb6a);
     g.fillRect(0, 0, 64, 8);
-
-    // Grass tufts
     g.fillStyle(0x388e3c);
     for (let i = 0; i < 8; i++) {
       const tx = i * 8 + 1;
       g.fillTriangle(tx, 4, tx + 3, 0, tx + 6, 4);
     }
-
-    // Rock/pebble detail in soil
     g.fillStyle(0x8d6e63);
     g.fillRect(8, 22, 4, 3);
     g.fillRect(30, 30, 5, 3);
     g.fillRect(52, 25, 3, 4);
     g.fillRect(15, 42, 4, 3);
     g.fillRect(42, 50, 5, 3);
-
-    // Darker cracks
     g.fillStyle(0x3e2723);
     g.fillRect(20, 35, 1, 8);
     g.fillRect(45, 28, 1, 6);
@@ -167,8 +204,33 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
+  private generateSpikeTexture() {
+    const g = this.add.graphics({ x: 0, y: 0 }).setVisible(false);
+
+    g.fillStyle(COLORS.SPIKE_RED);
+    for (let i = 0; i < 4; i++) {
+      const bx = i * 16;
+      g.fillTriangle(bx, 32, bx + 8, 4, bx + 16, 32);
+    }
+    g.fillStyle(0xff5252);
+    for (let i = 0; i < 4; i++) {
+      const bx = i * 16 + 2;
+      g.fillTriangle(bx, 32, bx + 6, 10, bx + 12, 32);
+    }
+
+    g.generateTexture('spike', 64, 32);
+    g.destroy();
+  }
+
   create() {
     QualityManager.init();
-    this.scene.start('MenuScene');
+
+    // Brief pause on loading screen to show branding
+    this.time.delayedCall(400, () => {
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.time.delayedCall(300, () => {
+        this.scene.start('MenuScene');
+      });
+    });
   }
 }

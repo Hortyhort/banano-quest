@@ -153,6 +153,14 @@ class StorageServiceClass {
     Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
+    // Also clear Phase 5 service keys
+    const extraKeys = [
+      'bananoquest_achievements',
+      'bananoquest_daily',
+      'bananoquest_streak',
+      'bananoquest_skins',
+    ];
+    extraKeys.forEach((key) => localStorage.removeItem(key));
   }
 
   getStats(): GameStats {

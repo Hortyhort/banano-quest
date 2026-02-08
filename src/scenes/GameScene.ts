@@ -8,18 +8,25 @@ import { StorageService } from '../services/StorageService.ts';
 import { AudioManager } from '../services/AudioManager.ts';
 import { HapticsService } from '../services/HapticsService.ts';
 import { QualityManager } from '../services/QualityManager.ts';
+import { AchievementService } from '../services/AchievementService.ts';
+import { DailyChallengeService } from '../services/DailyChallengeService.ts';
+import type { ChallengeModifier } from '../services/DailyChallengeService.ts';
+import { StreakService } from '../services/StreakService.ts';
+import { SkinService } from '../services/SkinService.ts';
 
 const RESPAWN_DELAY = 1500;
 const PIT_DEATH_Y = 800;
 const MAX_LIVES = 3;
 const CRUMBLE_DELAY = 500;
 const CRUMBLE_FALL_DELAY = 300;
+const BASE_GRAVITY = 800;
 
 export interface GameSceneData {
   worldIndex?: number;
   levelIndex?: number;
   score?: number;
   lives?: number;
+  dailyChallenge?: boolean;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -28,9 +35,14 @@ export class GameScene extends Phaser.Scene {
   private levelIndex = 0;
   private totalCoins = 0;
   private collectedCoins = 0;
+  private stompCount = 0;
+  private deathCount = 0;
   private lives = MAX_LIVES;
   private elapsedTime = 0;
   private levelActive = false;
+  private isDailyChallenge = false;
+  private challengeModifiers: ChallengeModifier[] = [];
+  private coinMultiplier = 1;
   private player!: Player;
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private coins!: Phaser.Physics.Arcade.Group;
@@ -47,10 +59,33 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data: GameSceneData) {
-    this.worldIndex = data.worldIndex ?? 0;
-    this.levelIndex = data.levelIndex ?? 0;
-    this.score = data.score ?? 0;
-    this.lives = data.lives ?? MAX_LIVES;
+    this.isDailyChallenge = data.dailyChallenge ?? false;
+    this.challengeModifiers = [];
+    this.coinMultiplier = StreakService.getCoinMultiplier();
+    this.stompCount = 0;
+    this.deathCount = 0;
+
+    if (this.isDailyChallenge) {
+      const challenge = DailyChallengeService.getToday();
+      this.worldIndex = challenge.worldIndex;
+      this.levelIndex = challenge.levelIndex;
+      this.challengeModifiers = challenge.modifiers;
+      if (this.challengeModifiers.includes('double_coins')) {
+        this.coinMultiplier *= 2;
+      }
+      if (this.challengeModifiers.includes('fragile')) {
+        this.lives = 1;
+      } else {
+        this.lives = data.lives ?? MAX_LIVES;
+      }
+      this.score = 0;
+    } else {
+      this.worldIndex = data.worldIndex ?? 0;
+      this.levelIndex = data.levelIndex ?? 0;
+      this.score = data.score ?? 0;
+      this.lives = data.lives ?? MAX_LIVES;
+    }
+
     this.collectedCoins = 0;
     this.elapsedTime = 0;
     this.levelActive = true;
@@ -74,6 +109,17 @@ export class GameScene extends Phaser.Scene {
 
     this.player = new Player(this, this.levelData.startX, this.levelData.startY);
     this.player.setSurfaceFriction(this.theme.friction);
+
+    // Apply skin tint
+    const skinTint = SkinService.getSelectedTint();
+    if (skinTint !== 0xffffff) {
+      this.player.setTint(skinTint);
+    }
+
+    // Daily challenge: low gravity modifier
+    if (this.challengeModifiers.includes('low_gravity')) {
+      this.physics.world.gravity.y = BASE_GRAVITY * 0.6;
+    }
 
     this.coins = this.physics.add.group();
     this.createCoins();
@@ -363,7 +409,8 @@ export class GameScene extends Phaser.Scene {
   ) {
     const player = playerObj as Player;
     const coin = coinObj as Coin;
-    const points = coin.collect();
+    const basePoints = coin.collect();
+    const points = Math.round(basePoints * this.coinMultiplier);
     this.score += points;
     this.collectedCoins++;
 
@@ -390,9 +437,13 @@ export class GameScene extends Phaser.Scene {
     if (playerBody.velocity.y > 0 && player.y < enemy.y - 10) {
       const points = enemy.stomp();
       this.score += points;
+      this.stompCount++;
       this.events.emit('updateScore', this.score);
       player.stompEnemy();
       this.showFloatingScore(enemy.x, enemy.y, points);
+      AchievementService.increment('stomp_1');
+      AchievementService.increment('stomp_25');
+      AchievementService.increment('stomp_100');
     } else {
       this.playerDeath();
     }
@@ -414,6 +465,7 @@ export class GameScene extends Phaser.Scene {
     if (this.isRespawning) return;
     this.isRespawning = true;
     this.levelActive = false;
+    this.deathCount++;
     this.lives--;
     this.events.emit('updateLives', this.lives);
     this.player.die();
@@ -532,6 +584,38 @@ export class GameScene extends Phaser.Scene {
     if (gotAllCoins && underPar) stars = 3;
 
     StorageService.setLevelStars(this.worldIndex, this.levelIndex, stars);
+
+    // Achievements
+    AchievementService.increment('play_5');
+    AchievementService.increment('play_25');
+    AchievementService.setProgress('coin_10', StorageService.getTotalCoins());
+    AchievementService.setProgress('coin_100', StorageService.getTotalCoins());
+    AchievementService.setProgress('coin_500', StorageService.getTotalCoins());
+    AchievementService.setProgress('stars_6', StorageService.getTotalStars());
+    AchievementService.setProgress('stars_12', StorageService.getTotalStars());
+    AchievementService.setProgress('stars_18', StorageService.getTotalStars());
+    if (this.deathCount === 0) {
+      AchievementService.setProgress('nodeath_level', 1);
+    }
+    if (stars === 3) {
+      AchievementService.setProgress('speed_3star', 1);
+    }
+    // Count completed worlds (all levels in a world have >= 1 star)
+    let completedWorlds = 0;
+    for (let w = 0; w < WORLDS.length; w++) {
+      const allDone = WORLDS[w].levels.every((_, l) => StorageService.getLevelStars(w, l) > 0);
+      if (allDone) completedWorlds++;
+    }
+    AchievementService.setProgress('all_worlds', completedWorlds);
+
+    // Streak
+    const streak = StreakService.recordPlay();
+    AchievementService.setProgress('streak_3', streak);
+
+    // Daily challenge completion
+    if (this.isDailyChallenge) {
+      DailyChallengeService.complete();
+    }
 
     // Unlock next level
     const isLastInWorld = this.levelIndex >= WORLDS[this.worldIndex].levels.length - 1;

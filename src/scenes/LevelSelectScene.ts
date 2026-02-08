@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, WORLDS, COLORS } from '../config/gameConfig.ts';
 import { StorageService } from '../services/StorageService.ts';
 import { AudioManager } from '../services/AudioManager.ts';
+import { DailyChallengeService } from '../services/DailyChallengeService.ts';
+import { StreakService } from '../services/StreakService.ts';
 
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
@@ -161,6 +163,31 @@ export class LevelSelectScene extends Phaser.Scene {
       });
     });
 
+    // ─── Daily Challenge ───
+    this.createDailyChallengeButton();
+
+    // ─── Streak display ───
+    const streak = StreakService.getCurrentStreak();
+    if (streak > 0) {
+      const mult = StreakService.getCoinMultiplier();
+      this.add
+        .text(GAME_WIDTH - 140, GAME_HEIGHT - 85, `\u{1F525} ${streak} day streak`, {
+          fontFamily: 'Arial',
+          fontSize: '16px',
+          color: '#FF9800',
+        })
+        .setOrigin(0.5);
+      if (mult > 1) {
+        this.add
+          .text(GAME_WIDTH - 140, GAME_HEIGHT - 65, `Coin bonus: ${mult}x`, {
+            fontFamily: 'Arial',
+            fontSize: '14px',
+            color: '#FFD700',
+          })
+          .setOrigin(0.5);
+      }
+    }
+
     // Back button
     const backBtn = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT - 40);
     const backBg = this.add.graphics();
@@ -183,5 +210,52 @@ export class LevelSelectScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(300);
+  }
+
+  private createDailyChallengeButton() {
+    const challenge = DailyChallengeService.getToday();
+    const isCompleted = challenge.completed;
+
+    const container = this.add.container(140, GAME_HEIGHT - 75);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(isCompleted ? 0x388e3c : 0xff9800, 0.8);
+    bg.fillRoundedRect(-100, -30, 200, 60, 10);
+    bg.lineStyle(2, 0xffffff, 0.3);
+    bg.strokeRoundedRect(-100, -30, 200, 60, 10);
+
+    const label = this.add
+      .text(0, -10, isCompleted ? '\u2713 DAILY DONE' : 'DAILY CHALLENGE', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '16px',
+        color: '#FFFFFF',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+
+    const modNames = challenge.modifiers.map((m) => DailyChallengeService.getModifierInfo(m).name);
+    const modText = this.add
+      .text(0, 10, modNames.join(' + '), {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: '#FFFFFF',
+      })
+      .setOrigin(0.5);
+
+    container.add([bg, label, modText]);
+    container.setSize(200, 60);
+
+    if (!isCompleted) {
+      container.setInteractive({ useHandCursor: true });
+      container.on('pointerdown', () => {
+        AudioManager.playSfx('menuSelect');
+        AudioManager.stopBgm();
+        this.cameras.main.fadeOut(300, 0, 0, 0);
+        this.time.delayedCall(300, () => {
+          this.scene.start('GameScene', { dailyChallenge: true });
+        });
+      });
+    }
   }
 }

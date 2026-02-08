@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig.ts';
 import { AudioManager } from '../services/AudioManager.ts';
+import { AchievementService, ACHIEVEMENTS } from '../services/AchievementService.ts';
+import { StreakService } from '../services/StreakService.ts';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -139,6 +141,24 @@ export class MenuScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
     });
+
+    // Stats display
+    const streak = StreakService.getCurrentStreak();
+    const achCount = AchievementService.getUnlockedCount();
+    const statsText: string[] = [];
+    if (streak > 0) statsText.push(`\u{1F525} ${streak} day streak`);
+    if (achCount > 0) statsText.push(`\u{1F3C6} ${achCount}/${ACHIEVEMENTS.length}`);
+    if (statsText.length > 0) {
+      this.add
+        .text(GAME_WIDTH / 2, 660, statsText.join('   '), {
+          fontFamily: 'Arial',
+          fontSize: '18px',
+          color: '#FFD700',
+          stroke: '#000000',
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5);
+    }
 
     this.cameras.main.fadeIn(500);
 

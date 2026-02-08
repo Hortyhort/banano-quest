@@ -13,6 +13,9 @@ import { DailyChallengeService } from '../services/DailyChallengeService.ts';
 import type { ChallengeModifier } from '../services/DailyChallengeService.ts';
 import { StreakService } from '../services/StreakService.ts';
 import { SkinService } from '../services/SkinService.ts';
+import { WalletBridge } from '../services/WalletBridge.ts';
+import { LeaderboardService } from '../services/LeaderboardService.ts';
+import { ShareService } from '../services/ShareService.ts';
 
 const RESPAWN_DELAY = 1500;
 const PIT_DEATH_Y = 800;
@@ -494,6 +497,9 @@ export class GameScene extends Phaser.Scene {
     StorageService.setHighScore(this.score);
     const highScore = StorageService.getHighScore();
 
+    // Submit to leaderboard
+    LeaderboardService.submit(this.score, this.worldIndex, this.levelIndex, 0);
+
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2,
       GAME_HEIGHT / 2,
@@ -509,7 +515,7 @@ export class GameScene extends Phaser.Scene {
 
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, 'GAME OVER', {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, 'GAME OVER', {
           fontFamily: 'Arial Black, Arial',
           fontSize: '64px',
           color: '#FF1744',
@@ -523,7 +529,7 @@ export class GameScene extends Phaser.Scene {
 
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, `Score: ${this.score}  |  Best: ${highScore}`, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, `Score: ${this.score}  |  Best: ${highScore}`, {
           fontFamily: 'Arial',
           fontSize: '28px',
           color: '#FFD700',
@@ -535,9 +541,38 @@ export class GameScene extends Phaser.Scene {
         .setAlpha(0)
     );
 
+    // Wallet reward claim
+    if (WalletBridge.isConnected() && this.score > 0) {
+      const reward = WalletBridge.calculateReward(this.score);
+      const claimBtn = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
+      const claimBg = this.add.graphics();
+      claimBg.fillStyle(0xffeb3b, 0.9);
+      claimBg.fillRoundedRect(-100, -16, 200, 32, 8);
+      const claimText = this.add
+        .text(0, 0, `Claim ${reward} BAN`, {
+          fontFamily: 'Arial Black, Arial',
+          fontSize: '16px',
+          color: '#795548',
+        })
+        .setOrigin(0.5);
+      claimBtn.add([claimBg, claimText]);
+      claimBtn.setSize(200, 32);
+      claimBtn.setInteractive({ useHandCursor: true });
+      claimBtn.setScrollFactor(0);
+      claimBtn.setAlpha(0);
+      texts.push(claimText);
+
+      claimBtn.on('pointerdown', () => {
+        const source = `level_${this.worldIndex}_${this.levelIndex}`;
+        WalletBridge.claimReward(this.score, source);
+        claimText.setText('Claimed!');
+        claimBtn.disableInteractive();
+      });
+    }
+
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80, 'SPACE = retry  |  ESC = level select', {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, 'SPACE = retry  |  ESC = level select', {
           fontFamily: 'Arial',
           fontSize: '22px',
           color: '#FFFFFF',
@@ -631,6 +666,12 @@ export class GameScene extends Phaser.Scene {
       StorageService.unlockLevel(flatIndex + 1);
     }
 
+    // Leaderboard + wallet
+    const lbResult = LeaderboardService.submit(this.score, this.worldIndex, this.levelIndex, stars);
+    const source = this.isDailyChallenge
+      ? 'daily_challenge'
+      : `level_${this.worldIndex}_${this.levelIndex}`;
+
     // Display
     const overlay = this.add
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0)
@@ -643,7 +684,7 @@ export class GameScene extends Phaser.Scene {
     const title = hasNext ? 'LEVEL COMPLETE!' : 'YOU WIN!';
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 90, title, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 130, title, {
           fontFamily: 'Arial Black, Arial',
           fontSize: '56px',
           color: '#FFEB3B',
@@ -659,7 +700,7 @@ export class GameScene extends Phaser.Scene {
     const starStr = '\u2605'.repeat(stars) + '\u2606'.repeat(3 - stars);
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, starStr, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 70, starStr, {
           fontFamily: 'Arial',
           fontSize: '48px',
           color: '#FFD700',
@@ -672,7 +713,7 @@ export class GameScene extends Phaser.Scene {
     const timeStr = `Time: ${Math.floor(this.elapsedTime)}s  (Par: ${this.levelData.parTime}s)`;
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, timeStr, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, timeStr, {
           fontFamily: 'Arial',
           fontSize: '24px',
           color: underPar ? '#00FF00' : '#FFFFFF',
@@ -684,9 +725,11 @@ export class GameScene extends Phaser.Scene {
         .setAlpha(0)
     );
 
+    // Score + leaderboard rank
+    const rankInfo = lbResult.levelRank > 0 ? `  (#${lbResult.levelRank} best)` : '';
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 55, `Score: ${this.score}`, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 15, `Score: ${this.score}${rankInfo}`, {
           fontFamily: 'Arial',
           fontSize: '28px',
           color: '#FFFFFF',
@@ -698,10 +741,63 @@ export class GameScene extends Phaser.Scene {
         .setAlpha(0)
     );
 
+    // Wallet reward claim
+    if (WalletBridge.isConnected() && this.score > 0) {
+      const reward = WalletBridge.calculateReward(this.score);
+      const claimBtn = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 60);
+      const claimBg = this.add.graphics();
+      claimBg.fillStyle(0xffeb3b, 0.9);
+      claimBg.fillRoundedRect(-100, -16, 200, 32, 8);
+      const claimText = this.add
+        .text(0, 0, `Claim ${reward} BAN`, {
+          fontFamily: 'Arial Black, Arial',
+          fontSize: '16px',
+          color: '#795548',
+        })
+        .setOrigin(0.5);
+      claimBtn.add([claimBg, claimText]);
+      claimBtn.setSize(200, 32);
+      claimBtn.setInteractive({ useHandCursor: true });
+      claimBtn.setScrollFactor(0);
+      claimBtn.setAlpha(0);
+      texts.push(claimText);
+
+      claimBtn.on('pointerdown', () => {
+        WalletBridge.claimReward(this.score, source);
+        claimText.setText('Claimed!');
+        claimBtn.disableInteractive();
+      });
+    }
+
+    // Share button
+    const shareBtn = this.add.container(GAME_WIDTH / 2 + 180, GAME_HEIGHT / 2 + 60);
+    const shareBg = this.add.graphics();
+    shareBg.fillStyle(0x2196f3, 0.9);
+    shareBg.fillRoundedRect(-45, -16, 90, 32, 8);
+    const shareText = this.add
+      .text(0, 0, 'Share', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '14px',
+        color: '#FFFFFF',
+      })
+      .setOrigin(0.5);
+    shareBtn.add([shareBg, shareText]);
+    shareBtn.setSize(90, 32);
+    shareBtn.setInteractive({ useHandCursor: true });
+    shareBtn.setScrollFactor(0);
+    shareBtn.setAlpha(0);
+    texts.push(shareText);
+
+    shareBtn.on('pointerdown', () => {
+      ShareService.shareScore(this.score, this.theme.name, stars);
+      shareText.setText('Shared!');
+      shareBtn.disableInteractive();
+    });
+
     const nextMsg = hasNext ? 'SPACE = next level  |  ESC = level select' : 'SPACE = play again';
     texts.push(
       this.add
-        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 110, nextMsg, {
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 120, nextMsg, {
           fontFamily: 'Arial',
           fontSize: '22px',
           color: '#FFFFFF',

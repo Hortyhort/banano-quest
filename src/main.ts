@@ -5,6 +5,7 @@ import { MenuScene } from './scenes/MenuScene.ts';
 import { LevelSelectScene } from './scenes/LevelSelectScene.ts';
 import { GameScene } from './scenes/GameScene.ts';
 import { UIScene } from './scenes/UIScene.ts';
+import { ProfileScene } from './scenes/ProfileScene.ts';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -23,7 +24,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, UIScene],
+  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, UIScene, ProfileScene],
 };
 
 const game = new Phaser.Game(config);

@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig.ts';
 import { AudioManager } from '../services/AudioManager.ts';
 import { AchievementService, ACHIEVEMENTS } from '../services/AchievementService.ts';
 import { StreakService } from '../services/StreakService.ts';
+import { WalletBridge } from '../services/WalletBridge.ts';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -148,14 +149,70 @@ export class MenuScene extends Phaser.Scene {
     const statsText: string[] = [];
     if (streak > 0) statsText.push(`\u{1F525} ${streak} day streak`);
     if (achCount > 0) statsText.push(`\u{1F3C6} ${achCount}/${ACHIEVEMENTS.length}`);
+    if (WalletBridge.isConnected()) {
+      statsText.push(`\u{1F4B0} ${WalletBridge.getBalance()} BAN`);
+    }
     if (statsText.length > 0) {
       this.add
-        .text(GAME_WIDTH / 2, 660, statsText.join('   '), {
+        .text(GAME_WIDTH / 2, 655, statsText.join('   '), {
           fontFamily: 'Arial',
           fontSize: '18px',
           color: '#FFD700',
           stroke: '#000000',
           strokeThickness: 3,
+        })
+        .setOrigin(0.5);
+    }
+
+    // Profile button (top-right)
+    const profileBtn = this.add.container(GAME_WIDTH - 80, 40);
+    const pBg = this.add.graphics();
+    pBg.fillStyle(0x311b92, 0.8);
+    pBg.fillRoundedRect(-55, -18, 110, 36, 8);
+    const pText = this.add
+      .text(0, 0, 'PROFILE', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '16px',
+        color: '#FFFFFF',
+      })
+      .setOrigin(0.5);
+    profileBtn.add([pBg, pText]);
+    profileBtn.setSize(110, 36);
+    profileBtn.setInteractive({ useHandCursor: true });
+    profileBtn.on('pointerdown', () => {
+      AudioManager.playSfx('menuSelect');
+      this.scene.start('ProfileScene');
+    });
+
+    // Wallet connect button (top-left) if not connected
+    if (!WalletBridge.isConnected()) {
+      const walletBtn = this.add.container(100, 40);
+      const wBg = this.add.graphics();
+      wBg.fillStyle(COLORS.BANANO_YELLOW, 0.9);
+      wBg.fillRoundedRect(-75, -18, 150, 36, 8);
+      const wText = this.add
+        .text(0, 0, 'Connect Wallet', {
+          fontFamily: 'Arial Black, Arial',
+          fontSize: '14px',
+          color: '#795548',
+        })
+        .setOrigin(0.5);
+      walletBtn.add([wBg, wText]);
+      walletBtn.setSize(150, 36);
+      walletBtn.setInteractive({ useHandCursor: true });
+      walletBtn.on('pointerdown', () => {
+        AudioManager.playSfx('menuSelect');
+        WalletBridge.connect();
+        this.scene.restart();
+      });
+    } else {
+      this.add
+        .text(100, 40, WalletBridge.getShortAddress() ?? '', {
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          color: '#AAFFAA',
+          stroke: '#000000',
+          strokeThickness: 2,
         })
         .setOrigin(0.5);
     }

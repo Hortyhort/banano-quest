@@ -4,6 +4,7 @@ import { StorageService } from '../services/StorageService.ts';
 import { AudioManager } from '../services/AudioManager.ts';
 import { DailyChallengeService } from '../services/DailyChallengeService.ts';
 import { StreakService } from '../services/StreakService.ts';
+import { LeaderboardService } from '../services/LeaderboardService.ts';
 
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
@@ -149,10 +150,13 @@ export class LevelSelectScene extends Phaser.Scene {
           });
         }
 
-        // Par time label for unlocked levels
+        // Par time + best score labels for unlocked levels
         if (isUnlocked) {
+          const best = LeaderboardService.getLevelBest(worldIdx, levelIdx);
+          const infoStr =
+            best > 0 ? `Par: ${level.parTime}s | Best: ${best}` : `Par: ${level.parTime}s`;
           const parLabel = this.add
-            .text(0, 60, `Par: ${level.parTime}s`, {
+            .text(0, 60, infoStr, {
               fontFamily: 'Arial',
               fontSize: '12px',
               color: '#AAAAAA',

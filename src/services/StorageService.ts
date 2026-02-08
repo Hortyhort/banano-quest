@@ -1,75 +1,81 @@
-/**
- * StorageService - Handles localStorage for game data persistence
- */
-
 const STORAGE_KEYS = {
   HIGH_SCORE: 'bananoquest_highscore',
   SETTINGS: 'bananoquest_settings',
   UNLOCKED_LEVELS: 'bananoquest_levels',
-  TOTAL_COINS: 'bananoquest_totalcoins'
-};
+  TOTAL_COINS: 'bananoquest_totalcoins',
+} as const;
 
-const DEFAULT_SETTINGS = {
+export interface GameSettings {
+  soundEnabled: boolean;
+  musicEnabled: boolean;
+}
+
+export interface GameStats {
+  highScore: number;
+  totalCoins: number;
+  unlockedLevels: number;
+}
+
+const DEFAULT_SETTINGS: GameSettings = {
   soundEnabled: true,
-  musicEnabled: true
+  musicEnabled: true,
 };
 
 class StorageServiceClass {
+  private isAvailable: boolean;
+
   constructor() {
     this.isAvailable = this.checkAvailability();
   }
 
-  checkAvailability() {
+  private checkAvailability(): boolean {
     try {
       const test = '__storage_test__';
       localStorage.setItem(test, test);
       localStorage.removeItem(test);
       return true;
-    } catch (e) {
-      console.warn('localStorage not available:', e);
+    } catch {
+      console.warn('localStorage not available');
       return false;
     }
   }
 
-  // High Score
-  getHighScore() {
+  getHighScore(): number {
     if (!this.isAvailable) return 0;
     const score = localStorage.getItem(STORAGE_KEYS.HIGH_SCORE);
     return score ? parseInt(score, 10) : 0;
   }
 
-  setHighScore(score) {
+  setHighScore(score: number): boolean {
     if (!this.isAvailable) return false;
     const currentHigh = this.getHighScore();
     if (score > currentHigh) {
       localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, score.toString());
-      return true; // New high score!
+      return true;
     }
     return false;
   }
 
-  // Total Coins Collected (lifetime stat)
-  getTotalCoins() {
+  getTotalCoins(): number {
     if (!this.isAvailable) return 0;
     const coins = localStorage.getItem(STORAGE_KEYS.TOTAL_COINS);
     return coins ? parseInt(coins, 10) : 0;
   }
 
-  addCoins(amount) {
-    if (!this.isAvailable) return;
+  addCoins(amount: number): number {
+    if (!this.isAvailable) return 0;
     const total = this.getTotalCoins() + amount;
     localStorage.setItem(STORAGE_KEYS.TOTAL_COINS, total.toString());
     return total;
   }
 
-  // Unlocked Levels
-  getUnlockedLevels() {
+  getUnlockedLevels(): number {
     if (!this.isAvailable) return 1;
     const levels = localStorage.getItem(STORAGE_KEYS.UNLOCKED_LEVELS);
     return levels ? parseInt(levels, 10) : 1;
   }
 
-  unlockLevel(level) {
+  unlockLevel(level: number): void {
     if (!this.isAvailable) return;
     const current = this.getUnlockedLevels();
     if (level > current) {
@@ -77,35 +83,33 @@ class StorageServiceClass {
     }
   }
 
-  // Settings
-  getSettings() {
+  getSettings(): GameSettings {
     if (!this.isAvailable) return { ...DEFAULT_SETTINGS };
     const settings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    return settings ? JSON.parse(settings) : { ...DEFAULT_SETTINGS };
+    return settings ? (JSON.parse(settings) as GameSettings) : { ...DEFAULT_SETTINGS };
   }
 
-  updateSettings(newSettings) {
-    if (!this.isAvailable) return;
+  updateSettings(newSettings: Partial<GameSettings>): GameSettings {
     const current = this.getSettings();
     const updated = { ...current, ...newSettings };
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    if (this.isAvailable) {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    }
     return updated;
   }
 
-  // Reset all data
-  resetAll() {
+  resetAll(): void {
     if (!this.isAvailable) return;
-    Object.values(STORAGE_KEYS).forEach(key => {
+    Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
   }
 
-  // Get all stats for display
-  getStats() {
+  getStats(): GameStats {
     return {
       highScore: this.getHighScore(),
       totalCoins: this.getTotalCoins(),
-      unlockedLevels: this.getUnlockedLevels()
+      unlockedLevels: this.getUnlockedLevels(),
     };
   }
 }

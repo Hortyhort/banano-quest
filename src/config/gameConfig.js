@@ -222,6 +222,9 @@ export const LEVELS = [
     spikes: [
       { x: 830, y: 670 }, { x: 862, y: 670 },
     ],
+    checkpoints: [
+      { x: 600, y: 220 },
+    ],
   },
 
   // Level 5 - Jungle Boss Level: dense enemies, all mechanics
@@ -262,6 +265,9 @@ export const LEVELS = [
     spikes: [
       { x: 480, y: 670 }, { x: 512, y: 670 }, { x: 544, y: 670 },
       { x: 960, y: 670 }, { x: 992, y: 670 },
+    ],
+    checkpoints: [
+      { x: 550, y: 260 },
     ],
   },
 
@@ -334,6 +340,9 @@ export const LEVELS = [
       { x: 400, y: 670 }, { x: 432, y: 670 }, { x: 464, y: 670 },
       { x: 896, y: 670 }, { x: 928, y: 670 },
     ],
+    checkpoints: [
+      { x: 550, y: 220 },
+    ],
   },
 
   // Level 8 - Cave gauntlet: high difficulty
@@ -377,6 +386,9 @@ export const LEVELS = [
       { x: 320, y: 670 }, { x: 352, y: 670 }, { x: 384, y: 670 },
       { x: 576, y: 670 }, { x: 608, y: 670 },
       { x: 832, y: 670 }, { x: 864, y: 670 }, { x: 896, y: 670 },
+    ],
+    checkpoints: [
+      { x: 500, y: 240 },
     ],
   },
 
@@ -453,6 +465,9 @@ export const LEVELS = [
       { x: 480, y: 670 }, { x: 512, y: 670 },
       { x: 768, y: 670 }, { x: 800, y: 670 },
     ],
+    checkpoints: [
+      { x: 550, y: 240 },
+    ],
   },
 
   // Level 11 - Sky fortress: dense enemies, limited platforms
@@ -496,6 +511,9 @@ export const LEVELS = [
       { x: 544, y: 670 }, { x: 576, y: 670 },
       { x: 800, y: 670 }, { x: 832, y: 670 }, { x: 864, y: 670 },
       { x: 1056, y: 670 }, { x: 1088, y: 670 },
+    ],
+    checkpoints: [
+      { x: 730, y: 310 },
     ],
   },
 
@@ -546,6 +564,10 @@ export const LEVELS = [
       { x: 672, y: 670 }, { x: 704, y: 670 },
       { x: 896, y: 670 }, { x: 928, y: 670 }, { x: 960, y: 670 },
       { x: 1088, y: 670 }, { x: 1120, y: 670 },
+    ],
+    checkpoints: [
+      { x: 430, y: 270 },
+      { x: 870, y: 240 },
     ],
   },
 ];

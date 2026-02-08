@@ -45,6 +45,8 @@ export class GameScene extends Phaser.Scene {
     this.movingPlatforms = [];
     this.fallingPlatforms = [];
     this.gameActive = true;
+    this.checkpointX = PLAYER.START_X;
+    this.checkpointY = PLAYER.START_Y;
 
     // Audio
     if (!this.audioManager) {
@@ -83,6 +85,10 @@ export class GameScene extends Phaser.Scene {
     this.powerUps = this.physics.add.group();
     this.createPowerUps(levelData);
 
+    // Checkpoints
+    this.checkpoints = this.physics.add.group();
+    this.createCheckpoints(levelData);
+
     // Collisions
     this.physics.add.collider(this.player, this.platforms, this.handlePlatformCollision, null, this);
     this.physics.add.collider(this.enemies, this.platforms);
@@ -90,6 +96,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.enemies, this.handleEnemyCollision, null, this);
     this.physics.add.overlap(this.player, this.spikeGroup, this.handleSpikeCollision, null, this);
     this.physics.add.overlap(this.player, this.powerUps, this.handlePowerUpCollect, null, this);
+    this.physics.add.overlap(this.player, this.checkpoints, this.handleCheckpoint, null, this);
 
     // Touch controls
     this.createTouchControls(isMobile);
@@ -305,6 +312,32 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  createCheckpoints(levelData) {
+    if (!levelData.checkpoints) return;
+    levelData.checkpoints.forEach(cp => {
+      const flag = this.add.container(cp.x, cp.y);
+      // Flag pole
+      const pole = this.add.rectangle(0, -20, 4, 40, 0x8D6E63);
+      // Flag triangle
+      const flagG = this.add.graphics();
+      flagG.fillStyle(0x4CAF50, 0.9);
+      flagG.fillTriangle(2, -38, 2, -18, 22, -28);
+      flag.add([pole, flagG]);
+      flag.setName(`checkpoint_${cp.x}`);
+
+      // Invisible hitbox
+      const hitbox = this.physics.add.sprite(cp.x, cp.y, null);
+      hitbox.setVisible(false);
+      hitbox.body.setAllowGravity(false);
+      hitbox.body.setSize(40, 60);
+      hitbox.cpX = cp.x;
+      hitbox.cpY = cp.y;
+      hitbox.activated = false;
+      hitbox.flagContainer = flag;
+      this.checkpoints.add(hitbox);
+    });
+  }
+
   createPowerUps(levelData) {
     if (!levelData.powerUps) return;
     levelData.powerUps.forEach(p => {
@@ -479,6 +512,32 @@ export class GameScene extends Phaser.Scene {
     this.screenShake(2, 60);
   }
 
+  handleCheckpoint(player, checkpoint) {
+    if (checkpoint.activated) return;
+    checkpoint.activated = true;
+    this.checkpointX = checkpoint.cpX;
+    this.checkpointY = checkpoint.cpY;
+
+    // Visual feedback: flag turns gold
+    const flag = checkpoint.flagContainer;
+    if (flag) {
+      flag.each(child => {
+        if (child.type === 'Graphics') {
+          child.clear();
+          child.fillStyle(0xFFD700, 1);
+          child.fillTriangle(2, -38, 2, -18, 22, -28);
+        }
+      });
+      this.tweens.add({
+        targets: flag, scaleX: 1.3, scaleY: 1.3,
+        duration: 150, yoyo: true
+      });
+    }
+
+    this.showFloatingScore(checkpoint.cpX, checkpoint.cpY - 40, 'CHECKPOINT!', '#4CAF50');
+    if (this.audioManager) this.audioManager.playButtonClick();
+  }
+
   playerHit() {
     const died = this.player.die();
     if (!died) return;
@@ -495,7 +554,7 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(1000, () => this.gameOver());
     } else {
       this.time.delayedCall(1000, () => {
-        if (this.player) this.player.respawn(PLAYER.START_X, PLAYER.START_Y);
+        if (this.player) this.player.respawn(this.checkpointX, this.checkpointY);
       });
     }
   }
@@ -659,27 +718,42 @@ export class GameScene extends Phaser.Scene {
     );
     this.tweens.add({ targets: overlay, alpha: 0.7, duration: 500 });
 
+    const timeElapsed = Math.floor(this.levelTimer / 1000);
+
     this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, 'GAME OVER',
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100, 'GAME OVER',
       { fontFamily: 'Arial Black', fontSize: '64px', color: '#FF5252', stroke: '#000000', strokeThickness: 8 }
     ).setOrigin(0.5).setAlpha(0).setName('goText');
 
     this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10, `Final Score: ${this.score}`,
-      { fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 4 }
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, `Score: ${this.score}  |  Coins: ${this.collectedCoins}/${this.totalCoins}`,
+      { fontFamily: 'Arial', fontSize: '26px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 4 }
     ).setOrigin(0.5).setAlpha(0).setName('goScore');
+
+    this.add.text(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20,
+      `Deaths: ${this.deaths}  |  Time: ${timeElapsed}s  |  Stomps: ${this.stomps}`,
+      { fontFamily: 'Arial', fontSize: '20px', color: '#B0BEC5', stroke: '#000000', strokeThickness: 3 }
+    ).setOrigin(0.5).setAlpha(0).setName('goStats');
 
     StorageService.setHighScore(this.score);
 
     this.add.text(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 70, 'Tap or SPACE to retry',
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80, 'Tap or SPACE to retry',
       { fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF', stroke: '#000000', strokeThickness: 3 }
     ).setOrigin(0.5).setAlpha(0).setName('goRetry');
+
+    this.add.text(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2 + 120, 'Press M for menu',
+      { fontFamily: 'Arial', fontSize: '18px', color: '#607D8B', stroke: '#000000', strokeThickness: 2 }
+    ).setOrigin(0.5).setAlpha(0).setName('goMenu');
 
     const goElements = [
       this.children.getByName('goText'),
       this.children.getByName('goScore'),
-      this.children.getByName('goRetry')
+      this.children.getByName('goStats'),
+      this.children.getByName('goRetry'),
+      this.children.getByName('goMenu')
     ].filter(Boolean);
 
     this.tweens.add({ targets: goElements, alpha: 1, duration: 500, delay: 300 });
@@ -688,7 +762,12 @@ export class GameScene extends Phaser.Scene {
       this.scene.stop('UIScene');
       this.scene.restart({ level: this.level, lives: 3 });
     };
+    const toMenu = () => {
+      this.scene.stop('UIScene');
+      this.scene.start('MenuScene');
+    };
     this.input.keyboard.once('keydown-SPACE', retry);
+    this.input.keyboard.once('keydown-M', toMenu);
     this.time.delayedCall(500, () => {
       this.input.once('pointerdown', () => this.time.delayedCall(100, retry));
     });

@@ -5,13 +5,17 @@ import {
   GRAVITY,
   PLAYER_SPEED,
   PLAYER_JUMP_VELOCITY,
+  COYOTE_TIME_MS,
+  JUMP_BUFFER_MS,
+  JUMP_CUT_MULTIPLIER,
   COLORS,
   PLAYER,
   COIN,
+  LEVELS,
   LEVEL_1_PLATFORMS,
   LEVEL_1_COINS,
 } from '../../src/config/gameConfig.ts';
-import type { PlatformData, CoinData } from '../../src/config/gameConfig.ts';
+import type { PlatformData, CoinData, LevelData } from '../../src/config/gameConfig.ts';
 
 describe('gameConfig', () => {
   describe('dimensions', () => {
@@ -37,6 +41,23 @@ describe('gameConfig', () => {
     });
   });
 
+  describe('player feel constants', () => {
+    it('has positive coyote time', () => {
+      expect(COYOTE_TIME_MS).toBeGreaterThan(0);
+      expect(COYOTE_TIME_MS).toBeLessThan(200);
+    });
+
+    it('has positive jump buffer', () => {
+      expect(JUMP_BUFFER_MS).toBeGreaterThan(0);
+      expect(JUMP_BUFFER_MS).toBeLessThan(200);
+    });
+
+    it('has jump cut multiplier between 0 and 1', () => {
+      expect(JUMP_CUT_MULTIPLIER).toBeGreaterThan(0);
+      expect(JUMP_CUT_MULTIPLIER).toBeLessThan(1);
+    });
+  });
+
   describe('COLORS', () => {
     it('has all required color keys', () => {
       expect(COLORS.SKY_BLUE).toBeDefined();
@@ -45,6 +66,10 @@ describe('gameConfig', () => {
       expect(COLORS.MONKEY_ORANGE).toBeDefined();
       expect(COLORS.MONKEY_BROWN).toBeDefined();
       expect(COLORS.PLATFORM_DARK).toBeDefined();
+      expect(COLORS.SPIKE_RED).toBeDefined();
+      expect(COLORS.ENEMY_PURPLE).toBeDefined();
+      expect(COLORS.ENEMY_BLUE).toBeDefined();
+      expect(COLORS.ENEMY_ORANGE).toBeDefined();
       expect(COLORS.UI_TEXT).toBe('#FFFFFF');
       expect(COLORS.UI_SHADOW).toBe('#000000');
     });
@@ -74,50 +99,77 @@ describe('gameConfig', () => {
     });
   });
 
-  describe('LEVEL_1_PLATFORMS', () => {
-    it('has at least one platform (ground)', () => {
-      expect(LEVEL_1_PLATFORMS.length).toBeGreaterThan(0);
+  describe('LEVELS', () => {
+    it('has at least 2 levels', () => {
+      expect(LEVELS.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('has a ground platform spanning full width', () => {
-      const ground = LEVEL_1_PLATFORMS.find((p: PlatformData) => p.height > 32);
-      expect(ground).toBeDefined();
-      expect(ground!.width).toBe(GAME_WIDTH);
-    });
+    LEVELS.forEach((level: LevelData, index: number) => {
+      describe(`Level ${index + 1}`, () => {
+        it('has platforms', () => {
+          expect(level.platforms.length).toBeGreaterThan(0);
+        });
 
-    it('all platforms are within game bounds', () => {
-      LEVEL_1_PLATFORMS.forEach((p: PlatformData) => {
-        expect(p.x).toBeGreaterThanOrEqual(0);
-        expect(p.x).toBeLessThanOrEqual(GAME_WIDTH);
-        expect(p.y).toBeGreaterThanOrEqual(0);
-        expect(p.y).toBeLessThanOrEqual(GAME_HEIGHT);
-      });
-    });
+        it('has coins', () => {
+          expect(level.coins.length).toBeGreaterThan(0);
+        });
 
-    it('all platforms have positive dimensions', () => {
-      LEVEL_1_PLATFORMS.forEach((p: PlatformData) => {
-        expect(p.width).toBeGreaterThan(0);
-        expect(p.height).toBeGreaterThan(0);
+        it('has enemies', () => {
+          expect(level.enemies.length).toBeGreaterThan(0);
+        });
+
+        it('has a scrolling world wider than viewport', () => {
+          expect(level.worldWidth).toBeGreaterThan(GAME_WIDTH);
+        });
+
+        it('has valid start position', () => {
+          expect(level.startX).toBeGreaterThanOrEqual(0);
+          expect(level.startX).toBeLessThanOrEqual(level.worldWidth);
+          expect(level.startY).toBeGreaterThanOrEqual(0);
+          expect(level.startY).toBeLessThanOrEqual(GAME_HEIGHT);
+        });
+
+        it('all platforms have positive dimensions', () => {
+          level.platforms.forEach((p: PlatformData) => {
+            expect(p.width).toBeGreaterThan(0);
+            expect(p.height).toBeGreaterThan(0);
+          });
+        });
+
+        it('all platforms are within world bounds', () => {
+          level.platforms.forEach((p: PlatformData) => {
+            expect(p.x).toBeGreaterThanOrEqual(0);
+            expect(p.x).toBeLessThanOrEqual(level.worldWidth);
+            expect(p.y).toBeGreaterThanOrEqual(0);
+            expect(p.y).toBeLessThanOrEqual(GAME_HEIGHT);
+          });
+        });
+
+        it('all coins are within world bounds', () => {
+          level.coins.forEach((c: CoinData) => {
+            expect(c.x).toBeGreaterThanOrEqual(0);
+            expect(c.x).toBeLessThanOrEqual(level.worldWidth);
+            expect(c.y).toBeGreaterThanOrEqual(0);
+            expect(c.y).toBeLessThanOrEqual(GAME_HEIGHT);
+          });
+        });
+
+        it('all enemies have valid types', () => {
+          level.enemies.forEach((e) => {
+            expect(['walker', 'jumper', 'flyer']).toContain(e.type);
+          });
+        });
       });
     });
   });
 
-  describe('LEVEL_1_COINS', () => {
-    it('has coins to collect', () => {
-      expect(LEVEL_1_COINS.length).toBeGreaterThan(0);
+  describe('backwards compatibility exports', () => {
+    it('LEVEL_1_PLATFORMS matches LEVELS[0].platforms', () => {
+      expect(LEVEL_1_PLATFORMS).toBe(LEVELS[0].platforms);
     });
 
-    it('has 12 coins', () => {
-      expect(LEVEL_1_COINS.length).toBe(12);
-    });
-
-    it('all coins are within game bounds', () => {
-      LEVEL_1_COINS.forEach((c: CoinData) => {
-        expect(c.x).toBeGreaterThanOrEqual(0);
-        expect(c.x).toBeLessThanOrEqual(GAME_WIDTH);
-        expect(c.y).toBeGreaterThanOrEqual(0);
-        expect(c.y).toBeLessThanOrEqual(GAME_HEIGHT);
-      });
+    it('LEVEL_1_COINS matches LEVELS[0].coins', () => {
+      expect(LEVEL_1_COINS).toBe(LEVELS[0].coins);
     });
   });
 });

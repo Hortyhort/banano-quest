@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, COIN } from '../config/gameConfig.ts';
+import { generateEnemyTextures } from '../sprites/Enemy.ts';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -37,6 +38,7 @@ export class BootScene extends Phaser.Scene {
     this.load.svg('monkey-jump', 'assets/monkey-3.svg', { width: 64, height: 78 });
 
     this.generatePlaceholderGraphics();
+    generateEnemyTextures(this);
   }
 
   private generatePlaceholderGraphics() {

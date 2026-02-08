@@ -6,6 +6,7 @@ export class UIScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private highScoreText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
+  private livesText!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -19,11 +20,13 @@ export class UIScene extends Phaser.Scene {
     this.createScoreDisplay();
     this.createHighScoreDisplay();
     this.createLevelDisplay();
+    this.createLivesDisplay();
 
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
       this.gameScene.events.on('updateLevel', this.updateLevel, this);
       this.gameScene.events.on('updateHighScore', this.updateHighScore, this);
+      this.gameScene.events.on('updateLives', this.updateLives, this);
     }
   }
 
@@ -91,6 +94,30 @@ export class UIScene extends Phaser.Scene {
       .setOrigin(0.5);
   }
 
+  private createLivesDisplay() {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(GAME_WIDTH - 290, 15, 130, 50, 10);
+
+    this.add
+      .text(GAME_WIDTH - 270, 40, '\u2764', {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#FF1744',
+      })
+      .setOrigin(0, 0.5);
+
+    this.livesText = this.add
+      .text(GAME_WIDTH - 240, 40, 'x 3', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '24px',
+        color: '#FFFFFF',
+        stroke: '#000000',
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0.5);
+  }
+
   private updateScore(score: number) {
     if (this.scoreText) {
       this.tweens.add({
@@ -113,6 +140,15 @@ export class UIScene extends Phaser.Scene {
   private updateHighScore(highScore: number) {
     if (this.highScoreText) {
       this.highScoreText.setText(`Best: ${highScore}`);
+    }
+  }
+
+  private updateLives(lives: number) {
+    if (this.livesText) {
+      this.livesText.setText(`x ${lives}`);
+      if (lives <= 1) {
+        this.livesText.setColor('#FF1744');
+      }
     }
   }
 }

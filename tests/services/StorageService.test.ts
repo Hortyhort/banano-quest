@@ -92,12 +92,55 @@ describe('StorageService', () => {
     });
   });
 
+  describe('star rating', () => {
+    it('returns 0 stars for unplayed level', () => {
+      expect(StorageService.getLevelStars(0, 0)).toBe(0);
+    });
+
+    it('saves and retrieves level stars', () => {
+      StorageService.setLevelStars(0, 0, 2);
+      expect(StorageService.getLevelStars(0, 0)).toBe(2);
+    });
+
+    it('only saves if new stars are higher', () => {
+      StorageService.setLevelStars(0, 0, 3);
+      StorageService.setLevelStars(0, 0, 1);
+      expect(StorageService.getLevelStars(0, 0)).toBe(3);
+    });
+
+    it('clamps stars to 0-3 range', () => {
+      StorageService.setLevelStars(0, 0, 5);
+      expect(StorageService.getLevelStars(0, 0)).toBe(3);
+    });
+
+    it('getWorldStars sums stars for a world', () => {
+      StorageService.setLevelStars(0, 0, 2);
+      StorageService.setLevelStars(0, 1, 3);
+      expect(StorageService.getWorldStars(0)).toBe(5);
+    });
+
+    it('getTotalStars sums all stars across worlds', () => {
+      StorageService.setLevelStars(0, 0, 2);
+      StorageService.setLevelStars(1, 0, 3);
+      StorageService.setLevelStars(2, 1, 1);
+      expect(StorageService.getTotalStars()).toBe(6);
+    });
+
+    it('different worlds have independent stars', () => {
+      StorageService.setLevelStars(0, 0, 3);
+      StorageService.setLevelStars(1, 0, 1);
+      expect(StorageService.getWorldStars(0)).toBe(3);
+      expect(StorageService.getWorldStars(1)).toBe(1);
+    });
+  });
+
   describe('resetAll', () => {
-    it('clears all stored data', () => {
+    it('clears all stored data including stars', () => {
       StorageService.setHighScore(999);
       StorageService.addCoins(50);
       StorageService.unlockLevel(5);
       StorageService.updateSettings({ soundEnabled: false });
+      StorageService.setLevelStars(0, 0, 3);
 
       StorageService.resetAll();
 
@@ -108,6 +151,8 @@ describe('StorageService', () => {
         soundEnabled: true,
         musicEnabled: true,
       });
+      expect(StorageService.getLevelStars(0, 0)).toBe(0);
+      expect(StorageService.getTotalStars()).toBe(0);
     });
   });
 

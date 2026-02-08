@@ -21,6 +21,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private spaceWasPressed = false;
   private wasOnGround = false;
   private lastVelocityY = 0;
+  private friction = 1;
 
   private coyoteTimer = 0;
   private jumpBufferTimer = 0;
@@ -51,6 +52,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       right: scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
     this.spaceKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+  }
+
+  setSurfaceFriction(friction: number) {
+    this.friction = friction;
   }
 
   getIsDead(): boolean {
@@ -90,17 +95,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.coyoteTimer -= delta;
     }
 
-    // Horizontal movement
-    if (this.cursors.left.isDown || this.wasd.left.isDown) {
-      this.body.setVelocityX(-PLAYER_SPEED);
+    // Horizontal movement (friction-aware for ice)
+    const targetVx =
+      this.cursors.left.isDown || this.wasd.left.isDown
+        ? -PLAYER_SPEED
+        : this.cursors.right.isDown || this.wasd.right.isDown
+          ? PLAYER_SPEED
+          : 0;
+
+    if (this.friction < 1) {
+      // Ice: lerp toward target (slide)
+      const lerpRate = this.friction * (delta / 16);
+      const currentVx = this.body.velocity.x;
+      this.body.setVelocityX(currentVx + (targetVx - currentVx) * lerpRate);
+    } else {
+      this.body.setVelocityX(targetVx);
+    }
+
+    if (targetVx < 0) {
       this.setFlipX(true);
       if (onGround) this.emitDustParticle();
-    } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
-      this.body.setVelocityX(PLAYER_SPEED);
+    } else if (targetVx > 0) {
       this.setFlipX(false);
       if (onGround) this.emitDustParticle();
-    } else {
-      this.body.setVelocityX(0);
     }
 
     // Jump input

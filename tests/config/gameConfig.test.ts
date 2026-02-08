@@ -12,10 +12,12 @@ import {
   PLAYER,
   COIN,
   LEVELS,
+  WORLDS,
+  WORLD_THEMES,
   LEVEL_1_PLATFORMS,
   LEVEL_1_COINS,
 } from '../../src/config/gameConfig.ts';
-import type { PlatformData, CoinData, LevelData } from '../../src/config/gameConfig.ts';
+import type { PlatformData, CoinData, LevelData, WorldData } from '../../src/config/gameConfig.ts';
 
 describe('gameConfig', () => {
   describe('dimensions', () => {
@@ -99,9 +101,60 @@ describe('gameConfig', () => {
     });
   });
 
-  describe('LEVELS', () => {
-    it('has at least 2 levels', () => {
-      expect(LEVELS.length).toBeGreaterThanOrEqual(2);
+  describe('WORLD_THEMES', () => {
+    it('has jungle, ice, and sky themes', () => {
+      expect(WORLD_THEMES.jungle).toBeDefined();
+      expect(WORLD_THEMES.ice).toBeDefined();
+      expect(WORLD_THEMES.sky).toBeDefined();
+    });
+
+    it('each theme has required properties', () => {
+      Object.values(WORLD_THEMES).forEach((theme) => {
+        expect(theme.id).toBeDefined();
+        expect(theme.name).toBeTruthy();
+        expect(theme.skyGradientTop).toBeDefined();
+        expect(theme.skyGradientBottom).toBeDefined();
+        expect(theme.groundColor).toBeDefined();
+        expect(theme.platformColor).toBeDefined();
+        expect(theme.friction).toBeGreaterThan(0);
+        expect(theme.friction).toBeLessThanOrEqual(1);
+        expect(['gameplay', 'menu']).toContain(theme.bgmTrack);
+      });
+    });
+
+    it('ice theme has low friction', () => {
+      expect(WORLD_THEMES.ice.friction).toBeLessThan(1);
+    });
+
+    it('jungle and sky themes have normal friction', () => {
+      expect(WORLD_THEMES.jungle.friction).toBe(1);
+      expect(WORLD_THEMES.sky.friction).toBe(1);
+    });
+  });
+
+  describe('WORLDS', () => {
+    it('has 3 worlds', () => {
+      expect(WORLDS.length).toBe(3);
+    });
+
+    it('each world has a theme and at least one level', () => {
+      WORLDS.forEach((world: WorldData) => {
+        expect(world.theme).toBeDefined();
+        expect(world.theme.id).toBeDefined();
+        expect(world.levels.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('worlds are ordered: jungle, ice, sky', () => {
+      expect(WORLDS[0].theme.id).toBe('jungle');
+      expect(WORLDS[1].theme.id).toBe('ice');
+      expect(WORLDS[2].theme.id).toBe('sky');
+    });
+  });
+
+  describe('LEVELS (flat)', () => {
+    it('has 6 levels total', () => {
+      expect(LEVELS.length).toBe(6);
     });
 
     LEVELS.forEach((level: LevelData, index: number) => {
@@ -127,6 +180,10 @@ describe('gameConfig', () => {
           expect(level.startX).toBeLessThanOrEqual(level.worldWidth);
           expect(level.startY).toBeGreaterThanOrEqual(0);
           expect(level.startY).toBeLessThanOrEqual(GAME_HEIGHT);
+        });
+
+        it('has a positive par time', () => {
+          expect(level.parTime).toBeGreaterThan(0);
         });
 
         it('all platforms have positive dimensions', () => {
@@ -159,6 +216,36 @@ describe('gameConfig', () => {
             expect(['walker', 'jumper', 'flyer']).toContain(e.type);
           });
         });
+      });
+    });
+  });
+
+  describe('sky world levels have wind zones', () => {
+    it('SKY levels have windZones defined', () => {
+      // Sky world is index 2
+      WORLDS[2].levels.forEach((level) => {
+        expect(level.windZones).toBeDefined();
+        expect(level.windZones!.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('wind zones have valid dimensions and forces', () => {
+      WORLDS[2].levels.forEach((level) => {
+        level.windZones!.forEach((wz) => {
+          expect(wz.width).toBeGreaterThan(0);
+          expect(wz.height).toBeGreaterThan(0);
+          expect(typeof wz.forceX).toBe('number');
+          expect(typeof wz.forceY).toBe('number');
+        });
+      });
+    });
+  });
+
+  describe('sky world levels have crumbling platforms', () => {
+    it('at least some platforms in sky levels are crumbling', () => {
+      WORLDS[2].levels.forEach((level) => {
+        const crumbling = level.platforms.filter((p) => p.crumbling);
+        expect(crumbling.length).toBeGreaterThan(0);
       });
     });
   });

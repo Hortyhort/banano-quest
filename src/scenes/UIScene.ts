@@ -8,6 +8,7 @@ export class UIScene extends Phaser.Scene {
   private highScoreText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
   private livesText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
   private muteButton!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -23,6 +24,7 @@ export class UIScene extends Phaser.Scene {
     this.createHighScoreDisplay();
     this.createLevelDisplay();
     this.createLivesDisplay();
+    this.createTimerDisplay();
     this.createMuteButton();
 
     if (this.gameScene) {
@@ -30,6 +32,7 @@ export class UIScene extends Phaser.Scene {
       this.gameScene.events.on('updateLevel', this.updateLevel, this);
       this.gameScene.events.on('updateHighScore', this.updateHighScore, this);
       this.gameScene.events.on('updateLives', this.updateLives, this);
+      this.gameScene.events.on('updateTimer', this.updateTimer, this);
     }
   }
 
@@ -121,6 +124,30 @@ export class UIScene extends Phaser.Scene {
       .setOrigin(0, 0.5);
   }
 
+  private createTimerDisplay() {
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(GAME_WIDTH / 2 - 60, 15, 120, 50, 10);
+
+    this.add
+      .text(GAME_WIDTH / 2 - 30, 40, '\u23F1', {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        color: '#FFFFFF',
+      })
+      .setOrigin(0.5);
+
+    this.timerText = this.add
+      .text(GAME_WIDTH / 2 + 15, 40, '0s', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '22px',
+        color: '#FFFFFF',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0, 0.5);
+  }
+
   private createMuteButton() {
     const panel = this.add.graphics();
     panel.fillStyle(0x000000, 0.3);
@@ -153,15 +180,21 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
-  private updateLevel(level: number) {
+  private updateLevel(level: string | number) {
     if (this.levelText) {
-      this.levelText.setText(`Level ${level}`);
+      this.levelText.setText(typeof level === 'string' ? level : `Level ${level}`);
     }
   }
 
   private updateHighScore(highScore: number) {
     if (this.highScoreText) {
       this.highScoreText.setText(`Best: ${highScore}`);
+    }
+  }
+
+  private updateTimer(seconds: number) {
+    if (this.timerText) {
+      this.timerText.setText(`${seconds}s`);
     }
   }
 

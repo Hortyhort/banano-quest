@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'bananoquest_settings',
   UNLOCKED_LEVELS: 'bananoquest_levels',
   TOTAL_COINS: 'bananoquest_totalcoins',
+  STARS: 'bananoquest_stars',
 } as const;
 
 export interface GameSettings {
@@ -96,6 +97,55 @@ class StorageServiceClass {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     }
     return updated;
+  }
+
+  private getStarsMap(): Record<string, number> {
+    if (!this.isAvailable) return {};
+    const raw = localStorage.getItem(STORAGE_KEYS.STARS);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  }
+
+  private saveStarsMap(map: Record<string, number>): void {
+    if (!this.isAvailable) return;
+    localStorage.setItem(STORAGE_KEYS.STARS, JSON.stringify(map));
+  }
+
+  getLevelStars(worldIndex: number, levelIndex: number): number {
+    const map = this.getStarsMap();
+    const key = `${worldIndex}-${levelIndex}`;
+    return map[key] ?? 0;
+  }
+
+  setLevelStars(worldIndex: number, levelIndex: number, stars: number): void {
+    const clamped = Math.max(0, Math.min(3, stars));
+    const map = this.getStarsMap();
+    const key = `${worldIndex}-${levelIndex}`;
+    const current = map[key] ?? 0;
+    if (clamped > current) {
+      map[key] = clamped;
+      this.saveStarsMap(map);
+    }
+  }
+
+  getWorldStars(worldIndex: number): number {
+    const map = this.getStarsMap();
+    const prefix = `${worldIndex}-`;
+    let total = 0;
+    for (const key in map) {
+      if (key.startsWith(prefix)) {
+        total += map[key];
+      }
+    }
+    return total;
+  }
+
+  getTotalStars(): number {
+    const map = this.getStarsMap();
+    let total = 0;
+    for (const key in map) {
+      total += map[key];
+    }
+    return total;
   }
 
   resetAll(): void {

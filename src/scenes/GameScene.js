@@ -9,6 +9,7 @@ import { PatrolWalker, FlyingPest, Spike } from '../sprites/Enemy.js';
 import { PowerUp } from '../sprites/PowerUp.js';
 import { StorageService } from '../services/StorageService.js';
 import { AudioManager } from '../services/AudioManager.js';
+import { AchievementService } from '../services/AchievementService.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -40,6 +41,7 @@ export class GameScene extends Phaser.Scene {
     this.comboTimer = 0;
     this.levelTimer = 0;
     this.deaths = 0;
+    this.stomps = 0;
     this.movingPlatforms = [];
     this.fallingPlatforms = [];
     this.gameActive = true;
@@ -103,6 +105,10 @@ export class GameScene extends Phaser.Scene {
     // Camera
     this.cameras.main.fadeIn(500);
 
+    // Pause controls
+    this.input.keyboard.on('keydown-ESC', () => this.togglePause());
+    this.input.keyboard.on('keydown-P', () => this.togglePause());
+
     // Emit initial state
     this.events.emit('updateScore', this.score);
     this.events.emit('updateLevel', this.level + 1);
@@ -111,42 +117,97 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('updateCombo', 0);
   }
 
+  togglePause() {
+    if (!this.gameActive) return;
+    this.scene.pause();
+    this.scene.launch('PauseScene', { parentScene: this });
+  }
+
   createBackground(theme) {
+    // Sky gradient (layer 0 - static)
     const bg = this.add.graphics();
     bg.fillGradientStyle(theme.bgTop, theme.bgTop, theme.bgBottom, theme.bgBottom, 1);
-    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    bg.fillRect(0, 0, GAME_WIDTH * 1.2, GAME_HEIGHT);
 
-    const cloudPositions = [
-      { x: 100, y: 80, scale: 1 }, { x: 400, y: 120, scale: 0.8 },
-      { x: 700, y: 60, scale: 1.2 }, { x: 1000, y: 100, scale: 0.9 },
-      { x: 1200, y: 70, scale: 1.1 }
-    ];
-    cloudPositions.forEach(cloud => {
+    // Clouds (layer 1 - slowest parallax drift)
+    this.parallaxClouds = [];
+    const cloudAlpha = theme.cloudColor === 0xFFFFFF ? 0.7 : 0.25;
+    [
+      { x: 80, y: 60, s: 1.1 }, { x: 350, y: 100, s: 0.8 },
+      { x: 650, y: 50, s: 1.3 }, { x: 950, y: 90, s: 0.9 },
+      { x: 1200, y: 70, s: 1.0 }, { x: 1400, y: 110, s: 0.7 }
+    ].forEach(c => {
       const g = this.add.graphics();
-      g.fillStyle(theme.cloudColor, theme.cloudColor === 0xFFFFFF ? 0.8 : 0.3);
-      g.fillCircle(0, 0, 30 * cloud.scale);
-      g.fillCircle(25 * cloud.scale, -10 * cloud.scale, 25 * cloud.scale);
-      g.fillCircle(50 * cloud.scale, 0, 30 * cloud.scale);
-      g.fillCircle(25 * cloud.scale, 10 * cloud.scale, 20 * cloud.scale);
-      g.setPosition(cloud.x, cloud.y);
+      g.fillStyle(theme.cloudColor, cloudAlpha);
+      g.fillCircle(0, 0, 28 * c.s);
+      g.fillCircle(24 * c.s, -8 * c.s, 22 * c.s);
+      g.fillCircle(48 * c.s, 0, 28 * c.s);
+      g.fillCircle(24 * c.s, 10 * c.s, 18 * c.s);
+      g.setPosition(c.x, c.y);
+      this.parallaxClouds.push({ obj: g, baseX: c.x, speed: 0.15 + Math.random() * 0.1 });
       this.tweens.add({
-        targets: g, x: g.x + 30,
-        duration: 4000 + Math.random() * 2000,
+        targets: g, y: c.y + 8,
+        duration: 3000 + Math.random() * 2000,
         ease: 'Sine.easeInOut', yoyo: true, repeat: -1
       });
     });
 
-    const hillGraphics = this.add.graphics();
-    hillGraphics.fillStyle(theme.hillFar, 0.5);
-    this.drawHill(hillGraphics, 0, GAME_HEIGHT - 100, 300, 100);
-    this.drawHill(hillGraphics, 250, GAME_HEIGHT - 80, 250, 80);
-    this.drawHill(hillGraphics, 600, GAME_HEIGHT - 120, 350, 120);
-    this.drawHill(hillGraphics, 950, GAME_HEIGHT - 90, 400, 90);
-    hillGraphics.fillStyle(theme.hillNear, 0.6);
-    this.drawHill(hillGraphics, -50, GAME_HEIGHT - 60, 200, 60);
-    this.drawHill(hillGraphics, 400, GAME_HEIGHT - 70, 280, 70);
-    this.drawHill(hillGraphics, 800, GAME_HEIGHT - 50, 220, 50);
-    this.drawHill(hillGraphics, 1100, GAME_HEIGHT - 80, 300, 80);
+    // Far hills (layer 2)
+    this.parallaxFarHills = this.add.graphics();
+    this.parallaxFarHills.fillStyle(theme.hillFar, 0.5);
+    this.drawHill(this.parallaxFarHills, -30, GAME_HEIGHT - 100, 320, 110);
+    this.drawHill(this.parallaxFarHills, 230, GAME_HEIGHT - 80, 280, 90);
+    this.drawHill(this.parallaxFarHills, 560, GAME_HEIGHT - 130, 380, 130);
+    this.drawHill(this.parallaxFarHills, 920, GAME_HEIGHT - 95, 420, 95);
+    this.drawHill(this.parallaxFarHills, 1250, GAME_HEIGHT - 85, 300, 85);
+
+    // Near hills (layer 3)
+    this.parallaxNearHills = this.add.graphics();
+    this.parallaxNearHills.fillStyle(theme.hillNear, 0.6);
+    this.drawHill(this.parallaxNearHills, -60, GAME_HEIGHT - 60, 220, 65);
+    this.drawHill(this.parallaxNearHills, 380, GAME_HEIGHT - 75, 300, 75);
+    this.drawHill(this.parallaxNearHills, 770, GAME_HEIGHT - 55, 240, 55);
+    this.drawHill(this.parallaxNearHills, 1080, GAME_HEIGHT - 85, 320, 85);
+
+    // Decorative particles for cave/sky worlds
+    if (theme === WORLD_THEMES.cave) {
+      // Crystal shimmer particles
+      for (let i = 0; i < 15; i++) {
+        const spark = this.add.circle(
+          Phaser.Math.Between(50, GAME_WIDTH - 50),
+          Phaser.Math.Between(30, GAME_HEIGHT - 100),
+          Phaser.Math.Between(1, 3), 0x4FC3F7, 0
+        );
+        this.tweens.add({
+          targets: spark,
+          alpha: { from: 0, to: 0.8 },
+          duration: Phaser.Math.Between(1500, 3000),
+          yoyo: true, repeat: -1,
+          delay: Phaser.Math.Between(0, 2000)
+        });
+      }
+    } else if (theme === WORLD_THEMES.sky) {
+      // Floating feather/petal particles
+      for (let i = 0; i < 10; i++) {
+        const petal = this.add.circle(
+          Phaser.Math.Between(0, GAME_WIDTH),
+          Phaser.Math.Between(0, GAME_HEIGHT),
+          Phaser.Math.Between(2, 4), 0xFFFFFF, 0.4
+        );
+        this.tweens.add({
+          targets: petal,
+          y: GAME_HEIGHT + 20,
+          x: petal.x + Phaser.Math.Between(-100, 100),
+          duration: Phaser.Math.Between(6000, 12000),
+          repeat: -1,
+          delay: Phaser.Math.Between(0, 5000),
+          onRepeat: () => {
+            petal.y = -10;
+            petal.x = Phaser.Math.Between(0, GAME_WIDTH);
+          }
+        });
+      }
+    }
   }
 
   drawHill(graphics, x, y, width, height) {
@@ -158,9 +219,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   createPlatforms(levelData) {
+    const world = levelData.world || 'jungle';
+    const suffix = world === 'jungle' ? '' : `-${world}`;
+
     levelData.platforms.forEach(platform => {
       const isGround = platform.height > 32;
-      const texture = isGround ? 'ground' : 'platform';
+      const baseTexture = isGround ? 'ground' : 'platform';
+      const texture = this.textures.exists(`${baseTexture}${suffix}`) ? `${baseTexture}${suffix}` : baseTexture;
       const tileWidth = 64;
       const tileHeight = isGround ? 64 : 32;
       const tilesX = Math.ceil(platform.width / tileWidth);
@@ -326,6 +391,16 @@ export class GameScene extends Phaser.Scene {
       if (this.audioManager) this.audioManager.playComboMilestone(this.combo);
     }
 
+    // Check achievements on coin collect
+    AchievementService.check({
+      score: this.score,
+      combo: this.combo,
+      stomps: this.stomps,
+      deaths: this.deaths,
+      levelComplete: false
+    });
+    this.events.emit('checkAchievements');
+
     if (this.collectedCoins >= this.totalCoins) {
       this.gameActive = false;
       this.levelComplete();
@@ -339,10 +414,21 @@ export class GameScene extends Phaser.Scene {
       enemy.stomp();
       player.body.setVelocityY(-300);
       this.score += ENEMY_STOMP_SCORE;
+      this.stomps++;
       this.events.emit('updateScore', this.score);
       this.showFloatingScore(enemy.x, enemy.y, `+${ENEMY_STOMP_SCORE}`, '#00FF00');
       this.screenShake(3, 100);
       if (this.audioManager) this.audioManager.playEnemyStomp();
+
+      // Check achievements on stomp
+      AchievementService.check({
+        score: this.score,
+        combo: this.combo,
+        stomps: this.stomps,
+        deaths: this.deaths,
+        levelComplete: false
+      });
+      this.events.emit('checkAchievements');
     } else {
       this.playerHit();
     }
@@ -408,6 +494,16 @@ export class GameScene extends Phaser.Scene {
     if (this.deaths === 0 && levelData.par && timeElapsed <= levelData.par) stars = 3;
 
     StorageService.unlockLevel(this.level + 2);
+
+    // Check achievements on level complete
+    AchievementService.check({
+      score: this.score,
+      combo: this.combo,
+      stomps: this.stomps,
+      deaths: this.deaths,
+      levelComplete: true
+    });
+    this.events.emit('checkAchievements');
 
     if (this.audioManager) this.audioManager.playLevelComplete();
     this.screenShake(4, 200);
@@ -588,5 +684,23 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.events.emit('updateTimer', Math.floor(this.levelTimer / 1000));
+
+    // Parallax effect based on player horizontal position
+    if (this.player && this.player.alive) {
+      const px = this.player.x / GAME_WIDTH; // 0 to 1
+      const offset = (px - 0.5) * 2; // -1 to 1
+
+      if (this.parallaxClouds) {
+        this.parallaxClouds.forEach(c => {
+          c.obj.x = c.baseX - offset * 20 * c.speed;
+        });
+      }
+      if (this.parallaxFarHills) {
+        this.parallaxFarHills.x = -offset * 15;
+      }
+      if (this.parallaxNearHills) {
+        this.parallaxNearHills.x = -offset * 30;
+      }
+    }
   }
 }

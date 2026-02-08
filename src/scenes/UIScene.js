@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../config/gameConfig.js';
+import { AchievementService } from '../services/AchievementService.js';
 
 export class UIScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +12,8 @@ export class UIScene extends Phaser.Scene {
     this.currentLevel = data.level || 0;
     this.currentLives = data.lives || 3;
     this.totalLevels = data.totalLevels || 1;
+    this.achievementQueue = [];
+    this.showingAchievement = false;
   }
 
   create() {
@@ -20,6 +23,8 @@ export class UIScene extends Phaser.Scene {
     this.createLivesDisplay();
     this.createComboDisplay();
     this.createTimerDisplay();
+    this.createPauseButton();
+    this.createAchievementContainer();
 
     if (this.gameScene) {
       this.gameScene.events.on('updateScore', this.updateScore, this);
@@ -28,6 +33,7 @@ export class UIScene extends Phaser.Scene {
       this.gameScene.events.on('updateLives', this.updateLives, this);
       this.gameScene.events.on('updateCombo', this.updateCombo, this);
       this.gameScene.events.on('updateTimer', this.updateTimer, this);
+      this.gameScene.events.on('checkAchievements', this.checkAchievements, this);
     }
   }
 
@@ -102,6 +108,110 @@ export class UIScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '20px',
       color: '#B0BEC5', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
+  }
+
+  createPauseButton() {
+    const btn = this.add.container(GAME_WIDTH - 40, 140);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.4);
+    bg.fillRoundedRect(-22, -22, 44, 44, 10);
+
+    // Pause icon (two bars)
+    const icon = this.add.graphics();
+    icon.fillStyle(0xFFFFFF, 0.9);
+    icon.fillRect(-8, -10, 6, 20);
+    icon.fillRect(2, -10, 6, 20);
+
+    btn.add([bg, icon]);
+    btn.setSize(44, 44);
+    btn.setInteractive({ useHandCursor: true });
+    btn.setDepth(1000);
+
+    btn.on('pointerover', () => {
+      this.tweens.add({ targets: btn, scaleX: 1.1, scaleY: 1.1, duration: 60 });
+    });
+    btn.on('pointerout', () => {
+      this.tweens.add({ targets: btn, scaleX: 1, scaleY: 1, duration: 60 });
+    });
+    btn.on('pointerdown', () => {
+      if (this.gameScene) {
+        this.gameScene.togglePause();
+      }
+    });
+  }
+
+  createAchievementContainer() {
+    // Achievement notification banner (hidden initially)
+    this.achieveBanner = this.add.container(GAME_WIDTH / 2, -80).setDepth(2000);
+
+    const bannerBg = this.add.graphics();
+    bannerBg.fillStyle(0x1B5E20, 0.95);
+    bannerBg.fillRoundedRect(-160, -35, 320, 70, 14);
+    bannerBg.lineStyle(2, 0xFFD700, 0.9);
+    bannerBg.strokeRoundedRect(-160, -35, 320, 70, 14);
+
+    this.achieveIcon = this.add.text(-140, 0, '\u{1F3C6}', {
+      fontSize: '28px'
+    }).setOrigin(0.5);
+
+    this.achieveTitle = this.add.text(-10, -12, '', {
+      fontFamily: 'Arial Black', fontSize: '18px',
+      color: '#FFD700', stroke: '#000000', strokeThickness: 2
+    }).setOrigin(0.5);
+
+    this.achieveDesc = this.add.text(-10, 12, '', {
+      fontFamily: 'Arial', fontSize: '14px',
+      color: '#FFFFFF'
+    }).setOrigin(0.5);
+
+    this.achieveBanner.add([bannerBg, this.achieveIcon, this.achieveTitle, this.achieveDesc]);
+  }
+
+  checkAchievements() {
+    const pending = AchievementService.getPending();
+    if (pending.length > 0) {
+      this.achievementQueue.push(...pending);
+      if (!this.showingAchievement) {
+        this.showNextAchievement();
+      }
+    }
+  }
+
+  showNextAchievement() {
+    if (this.achievementQueue.length === 0) {
+      this.showingAchievement = false;
+      return;
+    }
+
+    this.showingAchievement = true;
+    const achievement = this.achievementQueue.shift();
+
+    this.achieveTitle.setText(achievement.name);
+    this.achieveDesc.setText(achievement.desc);
+
+    // Slide in from top
+    this.achieveBanner.y = -80;
+    this.tweens.add({
+      targets: this.achieveBanner,
+      y: 60,
+      duration: 400,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Hold for 2.5s then slide out
+        this.time.delayedCall(2500, () => {
+          this.tweens.add({
+            targets: this.achieveBanner,
+            y: -80,
+            duration: 300,
+            ease: 'Power2',
+            onComplete: () => {
+              this.showNextAchievement();
+            }
+          });
+        });
+      }
+    });
   }
 
   updateScore(score) {

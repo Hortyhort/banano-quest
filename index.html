@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a1a2e">
   <title>Banano Quest</title>
   <style>
     * {
@@ -10,18 +14,27 @@
       padding: 0;
       box-sizing: border-box;
     }
-    body {
+    html, body {
       background-color: #1a1a2e;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      min-height: 100dvh;
       overflow: hidden;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     #game-container {
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 0 20px rgba(255, 235, 59, 0.3);
+    }
+    #game-container canvas {
+      touch-action: none;
     }
   </style>
 </head>

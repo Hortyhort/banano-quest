@@ -73,6 +73,18 @@ export const WORLD_THEMES = {
     hillFar: 0x263238,
     hillNear: 0x37474F,
     cloudColor: 0x546E7A,
+  },
+  sky: {
+    name: 'Sky Islands',
+    bgTop: 0xE1F5FE,
+    bgBottom: 0xB3E5FC,
+    platformColor: 0xBBDEFB,
+    platformDark: 0x90CAF9,
+    grassColor: 0xE3F2FD,
+    groundColor: 0x64B5F6,
+    hillFar: 0xCFD8DC,
+    hillNear: 0xB0BEC5,
+    cloudColor: 0xFFFFFF,
   }
 };
 
@@ -365,6 +377,175 @@ export const LEVELS = [
       { x: 320, y: 670 }, { x: 352, y: 670 }, { x: 384, y: 670 },
       { x: 576, y: 670 }, { x: 608, y: 670 },
       { x: 832, y: 670 }, { x: 864, y: 670 }, { x: 896, y: 670 },
+    ],
+  },
+
+  // ===== WORLD 3: SKY ISLANDS =====
+
+  // Level 9 - Sky intro: airy platforms, lots of vertical movement
+  {
+    world: 'sky',
+    par: 35,
+    platforms: [
+      { x: 640, y: 690, width: 1280, height: 60 },
+      { x: 200, y: 550, width: 160, height: 32 },
+      { x: 450, y: 460, width: 140, height: 32, moving: true, moveAxis: 'y', moveRange: 60, moveSpeed: 35 },
+      { x: 700, y: 520, width: 180, height: 32 },
+      { x: 950, y: 440, width: 150, height: 32 },
+      { x: 1150, y: 360, width: 160, height: 32, moving: true, moveAxis: 'y', moveRange: 70, moveSpeed: 40 },
+      { x: 350, y: 340, width: 180, height: 32 },
+      { x: 600, y: 260, width: 160, height: 32 },
+      { x: 850, y: 200, width: 200, height: 32 },
+      { x: 150, y: 180, width: 140, height: 32, falling: true },
+    ],
+    coins: [
+      { x: 200, y: 500 }, { x: 450, y: 410 }, { x: 700, y: 470 },
+      { x: 950, y: 390 }, { x: 1150, y: 310 }, { x: 350, y: 290 },
+      { x: 600, y: 210 }, { x: 800, y: 150 }, { x: 900, y: 150 },
+      { x: 150, y: 130 }, { x: 500, y: 640 }, { x: 800, y: 640 },
+    ],
+    enemies: [
+      { type: 'flyer', x: 500, y: 350, amplitude: 60, speed: 55 },
+      { type: 'walker', x: 850, y: 170, patrolDistance: 70 },
+    ],
+    powerUps: [
+      { type: 'DOUBLE_JUMP', x: 350, y: 300 },
+    ],
+    spikes: [],
+  },
+
+  // Level 10 - Sky bridges: lots of moving platforms, tight jumps
+  {
+    world: 'sky',
+    par: 45,
+    platforms: [
+      { x: 640, y: 690, width: 1280, height: 60 },
+      { x: 150, y: 560, width: 140, height: 32 },
+      { x: 350, y: 480, width: 120, height: 32, moving: true, moveAxis: 'x', moveRange: 80, moveSpeed: 50 },
+      { x: 600, y: 530, width: 150, height: 32, falling: true },
+      { x: 820, y: 450, width: 130, height: 32, moving: true, moveAxis: 'y', moveRange: 90, moveSpeed: 45 },
+      { x: 1050, y: 500, width: 140, height: 32 },
+      { x: 1200, y: 400, width: 130, height: 32, falling: true },
+      { x: 300, y: 360, width: 160, height: 32, moving: true, moveAxis: 'x', moveRange: 100, moveSpeed: 60 },
+      { x: 550, y: 280, width: 140, height: 32 },
+      { x: 800, y: 220, width: 160, height: 32, moving: true, moveAxis: 'y', moveRange: 60, moveSpeed: 40 },
+      { x: 1050, y: 170, width: 180, height: 32 },
+      { x: 150, y: 200, width: 120, height: 32 },
+    ],
+    coins: [
+      { x: 150, y: 510 }, { x: 350, y: 430 }, { x: 600, y: 480 },
+      { x: 820, y: 400 }, { x: 1050, y: 450 }, { x: 1200, y: 350 },
+      { x: 300, y: 310 }, { x: 550, y: 230 }, { x: 800, y: 170 },
+      { x: 1050, y: 120 }, { x: 150, y: 150 },
+      { x: 400, y: 640 }, { x: 700, y: 640 }, { x: 900, y: 640 },
+    ],
+    enemies: [
+      { type: 'flyer', x: 450, y: 400, amplitude: 50, speed: 70 },
+      { type: 'flyer', x: 900, y: 300, amplitude: 40, speed: 80 },
+      { type: 'flyer', x: 200, y: 280, amplitude: 45, speed: 60 },
+      { type: 'walker', x: 1050, y: 140, patrolDistance: 60 },
+    ],
+    powerUps: [
+      { type: 'MAGNET', x: 550, y: 240 },
+      { type: 'SPEED', x: 1050, y: 460 },
+    ],
+    spikes: [
+      { x: 480, y: 670 }, { x: 512, y: 670 },
+      { x: 768, y: 670 }, { x: 800, y: 670 },
+    ],
+  },
+
+  // Level 11 - Sky fortress: dense enemies, limited platforms
+  {
+    world: 'sky',
+    par: 50,
+    platforms: [
+      { x: 640, y: 690, width: 1280, height: 60 },
+      { x: 160, y: 560, width: 130, height: 32 },
+      { x: 380, y: 490, width: 120, height: 32, falling: true },
+      { x: 600, y: 540, width: 140, height: 32, moving: true, moveAxis: 'x', moveRange: 90, moveSpeed: 65 },
+      { x: 850, y: 460, width: 120, height: 32 },
+      { x: 1080, y: 510, width: 130, height: 32, moving: true, moveAxis: 'y', moveRange: 80, moveSpeed: 55 },
+      { x: 250, y: 370, width: 150, height: 32 },
+      { x: 500, y: 300, width: 120, height: 32, falling: true },
+      { x: 730, y: 350, width: 140, height: 32, moving: true, moveAxis: 'x', moveRange: 70, moveSpeed: 50 },
+      { x: 960, y: 270, width: 150, height: 32 },
+      { x: 1180, y: 200, width: 130, height: 32 },
+      { x: 150, y: 200, width: 120, height: 32, falling: true },
+    ],
+    coins: [
+      { x: 160, y: 510 }, { x: 380, y: 440 }, { x: 600, y: 490 },
+      { x: 850, y: 410 }, { x: 1080, y: 460 }, { x: 250, y: 320 },
+      { x: 500, y: 250 }, { x: 730, y: 300 }, { x: 960, y: 220 },
+      { x: 1180, y: 150 }, { x: 150, y: 150 },
+      { x: 350, y: 640 }, { x: 640, y: 640 }, { x: 950, y: 640 },
+    ],
+    enemies: [
+      { type: 'walker', x: 250, y: 340, patrolDistance: 45 },
+      { type: 'walker', x: 960, y: 240, patrolDistance: 50 },
+      { type: 'flyer', x: 400, y: 420, amplitude: 45, speed: 75 },
+      { type: 'flyer', x: 700, y: 250, amplitude: 40, speed: 85 },
+      { type: 'flyer', x: 1000, y: 380, amplitude: 50, speed: 70 },
+    ],
+    powerUps: [
+      { type: 'SHIELD', x: 850, y: 420 },
+      { type: 'DOUBLE_JUMP', x: 960, y: 230 },
+    ],
+    spikes: [
+      { x: 288, y: 670 }, { x: 320, y: 670 }, { x: 352, y: 670 },
+      { x: 544, y: 670 }, { x: 576, y: 670 },
+      { x: 800, y: 670 }, { x: 832, y: 670 }, { x: 864, y: 670 },
+      { x: 1056, y: 670 }, { x: 1088, y: 670 },
+    ],
+  },
+
+  // Level 12 - Sky Gauntlet: final level, maximum difficulty
+  {
+    world: 'sky',
+    par: 60,
+    platforms: [
+      { x: 640, y: 690, width: 1280, height: 60 },
+      { x: 130, y: 560, width: 120, height: 32 },
+      { x: 320, y: 490, width: 100, height: 32, moving: true, moveAxis: 'x', moveRange: 70, moveSpeed: 70 },
+      { x: 530, y: 550, width: 110, height: 32, falling: true },
+      { x: 730, y: 470, width: 100, height: 32, moving: true, moveAxis: 'y', moveRange: 100, moveSpeed: 60 },
+      { x: 950, y: 520, width: 120, height: 32, falling: true },
+      { x: 1150, y: 440, width: 110, height: 32 },
+      { x: 200, y: 370, width: 130, height: 32, moving: true, moveAxis: 'x', moveRange: 80, moveSpeed: 55 },
+      { x: 430, y: 310, width: 100, height: 32, falling: true },
+      { x: 640, y: 360, width: 120, height: 32, moving: true, moveAxis: 'y', moveRange: 70, moveSpeed: 50 },
+      { x: 870, y: 280, width: 130, height: 32 },
+      { x: 1100, y: 220, width: 120, height: 32, moving: true, moveAxis: 'x', moveRange: 60, moveSpeed: 65 },
+      { x: 640, y: 160, width: 180, height: 32 },
+      { x: 150, y: 180, width: 100, height: 32, falling: true },
+    ],
+    coins: [
+      { x: 130, y: 510 }, { x: 320, y: 440 }, { x: 530, y: 500 },
+      { x: 730, y: 420 }, { x: 950, y: 470 }, { x: 1150, y: 390 },
+      { x: 200, y: 320 }, { x: 430, y: 260 }, { x: 640, y: 310 },
+      { x: 870, y: 230 }, { x: 1100, y: 170 }, { x: 640, y: 110 },
+      { x: 580, y: 110 }, { x: 700, y: 110 }, { x: 150, y: 130 },
+      { x: 400, y: 640 }, { x: 640, y: 640 }, { x: 880, y: 640 },
+    ],
+    enemies: [
+      { type: 'walker', x: 870, y: 250, patrolDistance: 40 },
+      { type: 'walker', x: 640, y: 130, patrolDistance: 60 },
+      { type: 'flyer', x: 300, y: 420, amplitude: 40, speed: 85 },
+      { type: 'flyer', x: 600, y: 250, amplitude: 50, speed: 90 },
+      { type: 'flyer', x: 850, y: 380, amplitude: 45, speed: 80 },
+      { type: 'flyer', x: 1050, y: 320, amplitude: 35, speed: 95 },
+    ],
+    powerUps: [
+      { type: 'SHIELD', x: 640, y: 320 },
+      { type: 'DOUBLE_JUMP', x: 200, y: 330 },
+      { type: 'MAGNET', x: 640, y: 120 },
+    ],
+    spikes: [
+      { x: 224, y: 670 }, { x: 256, y: 670 }, { x: 288, y: 670 },
+      { x: 448, y: 670 }, { x: 480, y: 670 }, { x: 512, y: 670 },
+      { x: 672, y: 670 }, { x: 704, y: 670 },
+      { x: 896, y: 670 }, { x: 928, y: 670 }, { x: 960, y: 670 },
+      { x: 1088, y: 670 }, { x: 1120, y: 670 },
     ],
   },
 ];

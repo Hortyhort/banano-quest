@@ -121,6 +121,63 @@ export class BootScene extends Phaser.Scene {
     spikeG.generateTexture('spike', 32, 32);
     spikeG.destroy();
 
+    // Cave platform - rocky brown
+    const cavePlatG = this.make.graphics({ x: 0, y: 0, add: false });
+    cavePlatG.fillStyle(0x5D4037);
+    cavePlatG.fillRect(0, 8, 64, 24);
+    cavePlatG.fillStyle(0x795548);
+    cavePlatG.fillRect(0, 0, 64, 12);
+    cavePlatG.fillStyle(0x6D4C41);
+    for (let i = 0; i < 6; i++) cavePlatG.fillRect(i * 11 + 1, 2, 8, 6);
+    cavePlatG.fillStyle(0x3E2723);
+    cavePlatG.fillRect(0, 28, 64, 4);
+    // Small crystal accents
+    cavePlatG.fillStyle(0x4FC3F7, 0.5);
+    cavePlatG.fillTriangle(10, 0, 14, 0, 12, -4);
+    cavePlatG.fillTriangle(44, 0, 48, 0, 46, -3);
+    cavePlatG.generateTexture('platform-cave', 64, 32);
+    cavePlatG.destroy();
+
+    // Cave ground - dark stone
+    const caveGndG = this.make.graphics({ x: 0, y: 0, add: false });
+    caveGndG.fillStyle(0x3E2723);
+    caveGndG.fillRect(0, 0, 64, 64);
+    caveGndG.fillStyle(0x5D4037);
+    caveGndG.fillRect(0, 0, 64, 16);
+    caveGndG.fillStyle(0x4E342E);
+    caveGndG.fillRect(0, 0, 64, 8);
+    // Stone texture lines
+    caveGndG.lineStyle(1, 0x3E2723, 0.4);
+    caveGndG.lineBetween(0, 24, 64, 24);
+    caveGndG.lineBetween(20, 16, 20, 40);
+    caveGndG.lineBetween(44, 20, 44, 48);
+    caveGndG.generateTexture('ground-cave', 64, 64);
+    caveGndG.destroy();
+
+    // Sky platform - cloud-like white/blue
+    const skyPlatG = this.make.graphics({ x: 0, y: 0, add: false });
+    skyPlatG.fillStyle(0xE3F2FD);
+    skyPlatG.fillRect(0, 8, 64, 24);
+    skyPlatG.fillStyle(0xBBDEFB);
+    skyPlatG.fillRect(0, 0, 64, 12);
+    skyPlatG.fillStyle(0xFFFFFF, 0.6);
+    for (let i = 0; i < 5; i++) skyPlatG.fillCircle(i * 14 + 6, 6, 7);
+    skyPlatG.fillStyle(0x90CAF9);
+    skyPlatG.fillRect(0, 28, 64, 4);
+    skyPlatG.generateTexture('platform-sky', 64, 32);
+    skyPlatG.destroy();
+
+    // Sky ground - solid cloud base
+    const skyGndG = this.make.graphics({ x: 0, y: 0, add: false });
+    skyGndG.fillStyle(0xBBDEFB);
+    skyGndG.fillRect(0, 0, 64, 64);
+    skyGndG.fillStyle(0xE3F2FD);
+    skyGndG.fillRect(0, 0, 64, 16);
+    skyGndG.fillStyle(0xFFFFFF, 0.5);
+    for (let i = 0; i < 5; i++) skyGndG.fillCircle(i * 14 + 6, 6, 8);
+    skyGndG.generateTexture('ground-sky', 64, 64);
+    skyGndG.destroy();
+
     // Power-up textures
     const puSize = 32;
     const puTypes = [

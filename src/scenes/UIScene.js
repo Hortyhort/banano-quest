@@ -23,6 +23,7 @@ export class UIScene extends Phaser.Scene {
     this.createLivesDisplay();
     this.createComboDisplay();
     this.createTimerDisplay();
+    this.createProgressBar();
     this.createPauseButton();
     this.createAchievementContainer();
 
@@ -33,6 +34,8 @@ export class UIScene extends Phaser.Scene {
       this.gameScene.events.on('updateLives', this.updateLives, this);
       this.gameScene.events.on('updateCombo', this.updateCombo, this);
       this.gameScene.events.on('updateTimer', this.updateTimer, this);
+      this.gameScene.events.on('updateProgress', this.updateProgress, this);
+      this.gameScene.events.on('playerHit', this.flashDamage, this);
       this.gameScene.events.on('checkAchievements', this.checkAchievements, this);
     }
   }
@@ -108,6 +111,36 @@ export class UIScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '20px',
       color: '#B0BEC5', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
+  }
+
+  createProgressBar() {
+    const barX = 150;
+    const barY = 125;
+    const barWidth = 200;
+    const barHeight = 12;
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(barX - 10, barY - 8, barWidth + 20, barHeight + 16, 8);
+
+    // Background bar
+    this.progressBg = this.add.graphics();
+    this.progressBg.fillStyle(0x333333, 0.6);
+    this.progressBg.fillRoundedRect(barX, barY, barWidth, barHeight, 4);
+
+    // Fill bar
+    this.progressFill = this.add.graphics();
+    this.progressBarX = barX;
+    this.progressBarY = barY;
+    this.progressBarWidth = barWidth;
+    this.progressBarHeight = barHeight;
+    this.updateProgress(0, 1);
+
+    // Label
+    this.progressLabel = this.add.text(barX + barWidth + 15, barY + barHeight / 2, '0/0', {
+      fontFamily: 'Arial', fontSize: '14px',
+      color: '#FFFFFF', stroke: '#000000', strokeThickness: 2
+    }).setOrigin(0, 0.5);
   }
 
   createPauseButton() {
@@ -261,6 +294,39 @@ export class UIScene extends Phaser.Scene {
         alpha: 0, duration: 300
       });
     }
+  }
+
+  updateProgress(collected, total) {
+    if (!this.progressFill) return;
+    this.progressFill.clear();
+    const ratio = total > 0 ? Math.min(collected / total, 1) : 0;
+    const fillWidth = this.progressBarWidth * ratio;
+    if (fillWidth > 0) {
+      const color = ratio >= 1 ? 0x4CAF50 : 0xFFEB3B;
+      this.progressFill.fillStyle(color, 0.9);
+      this.progressFill.fillRoundedRect(
+        this.progressBarX, this.progressBarY,
+        fillWidth, this.progressBarHeight, 4
+      );
+    }
+    if (this.progressLabel) {
+      this.progressLabel.setText(`${collected}/${total}`);
+    }
+  }
+
+  flashDamage() {
+    const flash = this.add.rectangle(
+      GAME_WIDTH / 2, 0, GAME_WIDTH, 8, 0xFF0000, 0.8
+    ).setOrigin(0.5, 0).setDepth(1500);
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleY: 3,
+      duration: 300,
+      ease: 'Power2',
+      onComplete: () => flash.destroy()
+    });
   }
 
   updateTimer(seconds) {

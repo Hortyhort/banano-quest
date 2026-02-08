@@ -59,6 +59,9 @@ export class GameScene extends Phaser.Scene {
     const levelData = LEVELS[this.level] || LEVELS[0];
     const theme = WORLD_THEMES[levelData.world] || WORLD_THEMES.jungle;
 
+    // Start background music for this world
+    this.audioManager.startMusic(levelData.world);
+
     this.createBackground(theme);
 
     // Platforms
@@ -122,6 +125,7 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('updateHighScore', StorageService.getHighScore());
     this.events.emit('updateLives', this.lives);
     this.events.emit('updateCombo', 0);
+    this.events.emit('updateProgress', 0, this.totalCoins);
   }
 
   togglePause() {
@@ -445,6 +449,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.emit('updateScore', this.score);
     this.events.emit('updateCombo', this.combo);
+    this.events.emit('updateProgress', this.collectedCoins, this.totalCoins);
     player.collectCoin();
 
     const comboText = multiplier > 1 ? ` x${multiplier}` : '';
@@ -547,6 +552,7 @@ export class GameScene extends Phaser.Scene {
     this.combo = 0;
     this.events.emit('updateLives', this.lives);
     this.events.emit('updateCombo', 0);
+    this.events.emit('playerHit');
     this.screenShake(5, 200);
 
     if (this.lives <= 0) {
@@ -635,7 +641,10 @@ export class GameScene extends Phaser.Scene {
     });
     this.events.emit('checkAchievements');
 
-    if (this.audioManager) this.audioManager.playLevelComplete();
+    if (this.audioManager) {
+      this.audioManager.stopMusic();
+      this.audioManager.playLevelComplete();
+    }
     this.screenShake(4, 200);
 
     const overlay = this.add.rectangle(
@@ -711,7 +720,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   gameOver() {
-    if (this.audioManager) this.audioManager.playDeath();
+    if (this.audioManager) {
+      this.audioManager.stopMusic();
+      this.audioManager.playDeath();
+    }
 
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0

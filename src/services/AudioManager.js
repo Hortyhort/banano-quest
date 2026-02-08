@@ -179,11 +179,120 @@ export class AudioManager {
     });
   }
 
+  // --- Background Music ---
+
+  startMusic(world = 'jungle') {
+    if (!this.initialized || !this.musicEnabled) return;
+    this.stopMusic();
+    this.resume();
+
+    this.musicPlaying = true;
+    this.musicWorld = world;
+    this._scheduleNextBar(0);
+  }
+
+  _scheduleNextBar(barIndex) {
+    if (!this.musicPlaying || !this.musicEnabled) return;
+
+    const bpm = 120;
+    const beatDuration = 60 / bpm;
+    const barDuration = beatDuration * 4;
+    const now = this.ctx.currentTime;
+
+    const patterns = this._getMusicPattern(this.musicWorld);
+    const pattern = patterns[barIndex % patterns.length];
+
+    pattern.forEach(note => {
+      const noteTime = now + note.beat * beatDuration;
+      this._scheduleMusicNote(note.freq, noteTime, note.dur * beatDuration, note.vol || 0.06, note.type || 'sine');
+    });
+
+    this.musicTimer = setTimeout(() => {
+      this._scheduleNextBar(barIndex + 1);
+    }, barDuration * 1000);
+  }
+
+  _scheduleMusicNote(freq, time, duration, volume, type) {
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume * this.masterVolume, time);
+      gain.gain.setValueAtTime(volume * this.masterVolume, time + duration * 0.7);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(time);
+      osc.stop(time + duration);
+    } catch { /* ignore */ }
+  }
+
+  _getMusicPattern(world) {
+    // Simple 4-beat bar patterns — pentatonic melodies
+    if (world === 'cave') {
+      return [
+        [
+          { beat: 0, freq: 220, dur: 0.8, type: 'triangle' },
+          { beat: 1, freq: 261, dur: 0.5, type: 'triangle' },
+          { beat: 2, freq: 196, dur: 0.8, type: 'triangle' },
+          { beat: 3, freq: 233, dur: 0.5, type: 'triangle' },
+        ],
+        [
+          { beat: 0, freq: 196, dur: 0.8, type: 'triangle' },
+          { beat: 1.5, freq: 261, dur: 0.5, type: 'triangle' },
+          { beat: 2.5, freq: 293, dur: 0.8, type: 'triangle' },
+        ],
+      ];
+    } else if (world === 'sky') {
+      return [
+        [
+          { beat: 0, freq: 523, dur: 0.8, type: 'sine', vol: 0.05 },
+          { beat: 1, freq: 659, dur: 0.5, type: 'sine', vol: 0.04 },
+          { beat: 2, freq: 784, dur: 0.8, type: 'sine', vol: 0.05 },
+          { beat: 3, freq: 659, dur: 0.5, type: 'sine', vol: 0.04 },
+        ],
+        [
+          { beat: 0, freq: 784, dur: 0.8, type: 'sine', vol: 0.05 },
+          { beat: 1.5, freq: 523, dur: 0.5, type: 'sine', vol: 0.04 },
+          { beat: 2.5, freq: 659, dur: 1, type: 'sine', vol: 0.05 },
+        ],
+      ];
+    }
+    // Jungle default - cheerful pentatonic
+    return [
+      [
+        { beat: 0, freq: 392, dur: 0.5, type: 'sine' },
+        { beat: 0.5, freq: 440, dur: 0.5, type: 'sine' },
+        { beat: 1, freq: 523, dur: 0.8, type: 'sine' },
+        { beat: 2, freq: 440, dur: 0.5, type: 'sine' },
+        { beat: 2.5, freq: 392, dur: 0.5, type: 'sine' },
+        { beat: 3, freq: 330, dur: 0.8, type: 'sine' },
+      ],
+      [
+        { beat: 0, freq: 330, dur: 0.5, type: 'sine' },
+        { beat: 0.5, freq: 392, dur: 0.5, type: 'sine' },
+        { beat: 1, freq: 440, dur: 0.8, type: 'sine' },
+        { beat: 2.5, freq: 523, dur: 0.5, type: 'sine' },
+        { beat: 3, freq: 392, dur: 0.8, type: 'sine' },
+      ],
+    ];
+  }
+
+  stopMusic() {
+    this.musicPlaying = false;
+    if (this.musicTimer) {
+      clearTimeout(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
   setEnabled(enabled) {
     this.enabled = enabled;
   }
 
   setMusicEnabled(enabled) {
     this.musicEnabled = enabled;
+    if (!enabled) this.stopMusic();
   }
 }

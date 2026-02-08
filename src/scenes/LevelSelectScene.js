@@ -93,9 +93,13 @@ export class LevelSelectScene extends Phaser.Scene {
             fontSize: '14px'
           }).setOrigin(0.5);
         } else {
-          // Show coins count as a simple indicator
-          subText = this.add.text(0, 16, `${level.coins.length}\u{1F4B0}`, {
-            fontSize: '12px', color: '#FFD700'
+          const earnedStars = StorageService.getLevelStars(level.index);
+          let starStr = '';
+          for (let s = 0; s < 3; s++) {
+            starStr += s < earnedStars ? '\u2605' : '\u2606';
+          }
+          subText = this.add.text(0, 16, starStr, {
+            fontSize: '13px', color: earnedStars > 0 ? '#FFD700' : '#666666'
           }).setOrigin(0.5);
         }
 

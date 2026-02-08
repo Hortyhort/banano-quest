@@ -315,39 +315,71 @@ export class GameScene extends Phaser.Scene {
 
   createTouchControls(isMobile) {
     const alpha = isMobile ? 0.5 : 0;
+    const pressAlpha = isMobile ? 0.8 : 0;
     const y = GAME_HEIGHT - 80;
 
-    this.touchLeftBtn = this.add.circle(80, y, 40, 0xFFFFFF, alpha)
+    // Left button - larger hitbox for mobile
+    this.touchLeftBtn = this.add.circle(80, y, 44, 0xFFFFFF, alpha)
       .setScrollFactor(0).setDepth(1000).setInteractive();
-    this.add.text(80, y, '\u25C0', { fontSize: '28px', color: '#333' })
+    const leftLabel = this.add.text(80, y, '\u25C0', { fontSize: '30px', color: '#333' })
       .setOrigin(0.5).setScrollFactor(0).setDepth(1001).setAlpha(alpha);
 
-    this.touchRightBtn = this.add.circle(180, y, 40, 0xFFFFFF, alpha)
+    // Right button
+    this.touchRightBtn = this.add.circle(190, y, 44, 0xFFFFFF, alpha)
       .setScrollFactor(0).setDepth(1000).setInteractive();
-    this.add.text(180, y, '\u25B6', { fontSize: '28px', color: '#333' })
+    const rightLabel = this.add.text(190, y, '\u25B6', { fontSize: '30px', color: '#333' })
       .setOrigin(0.5).setScrollFactor(0).setDepth(1001).setAlpha(alpha);
 
-    this.touchJumpBtn = this.add.circle(GAME_WIDTH - 100, y, 50, 0xFFEB3B, alpha)
+    // Jump button - bigger for easy thumb access
+    this.touchJumpBtn = this.add.circle(GAME_WIDTH - 90, y, 54, 0xFFEB3B, alpha)
       .setScrollFactor(0).setDepth(1000).setInteractive();
-    this.add.text(GAME_WIDTH - 100, y, '\u25B2', { fontSize: '24px', color: '#333' })
+    const jumpLabel = this.add.text(GAME_WIDTH - 90, y, '\u25B2', { fontSize: '28px', color: '#333' })
       .setOrigin(0.5).setScrollFactor(0).setDepth(1001).setAlpha(alpha);
 
-    this.touchLeftBtn.on('pointerdown', () => { if (this.player) this.player.touchMoveX = -1; });
-    this.touchLeftBtn.on('pointerup', () => { if (this.player) this.player.touchMoveX = 0; });
-    this.touchLeftBtn.on('pointerout', () => { if (this.player) this.player.touchMoveX = 0; });
+    // Left
+    this.touchLeftBtn.on('pointerdown', () => {
+      if (this.player) this.player.touchMoveX = -1;
+      this.touchLeftBtn.setAlpha(pressAlpha);
+    });
+    this.touchLeftBtn.on('pointerup', () => {
+      if (this.player) this.player.touchMoveX = 0;
+      this.touchLeftBtn.setAlpha(alpha);
+    });
+    this.touchLeftBtn.on('pointerout', () => {
+      if (this.player) this.player.touchMoveX = 0;
+      this.touchLeftBtn.setAlpha(alpha);
+    });
 
-    this.touchRightBtn.on('pointerdown', () => { if (this.player) this.player.touchMoveX = 1; });
-    this.touchRightBtn.on('pointerup', () => { if (this.player) this.player.touchMoveX = 0; });
-    this.touchRightBtn.on('pointerout', () => { if (this.player) this.player.touchMoveX = 0; });
+    // Right
+    this.touchRightBtn.on('pointerdown', () => {
+      if (this.player) this.player.touchMoveX = 1;
+      this.touchRightBtn.setAlpha(pressAlpha);
+    });
+    this.touchRightBtn.on('pointerup', () => {
+      if (this.player) this.player.touchMoveX = 0;
+      this.touchRightBtn.setAlpha(alpha);
+    });
+    this.touchRightBtn.on('pointerout', () => {
+      if (this.player) this.player.touchMoveX = 0;
+      this.touchRightBtn.setAlpha(alpha);
+    });
 
+    // Jump
     this.touchJumpBtn.on('pointerdown', () => {
       if (this.player) {
         this.player.touchJump = true;
         this.player.touchJumpConsumed = false;
       }
+      this.touchJumpBtn.setAlpha(pressAlpha);
     });
-    this.touchJumpBtn.on('pointerup', () => { if (this.player) this.player.touchJump = false; });
-    this.touchJumpBtn.on('pointerout', () => { if (this.player) this.player.touchJump = false; });
+    this.touchJumpBtn.on('pointerup', () => {
+      if (this.player) this.player.touchJump = false;
+      this.touchJumpBtn.setAlpha(alpha);
+    });
+    this.touchJumpBtn.on('pointerout', () => {
+      if (this.player) this.player.touchJump = false;
+      this.touchJumpBtn.setAlpha(alpha);
+    });
   }
 
   handlePlatformCollision(player, platform) {
@@ -385,6 +417,7 @@ export class GameScene extends Phaser.Scene {
     const comboText = multiplier > 1 ? ` x${multiplier}` : '';
     this.showFloatingScore(coin.x, coin.y, `+${totalPoints}${comboText}`,
       multiplier > 1 ? '#FF9800' : '#FFEB3B');
+    this.emitCoinParticles(coin.x, coin.y);
 
     if (this.combo === 3 || this.combo === 5 || this.combo === 8) {
       this.screenShake(2, 80);
@@ -418,6 +451,7 @@ export class GameScene extends Phaser.Scene {
       this.events.emit('updateScore', this.score);
       this.showFloatingScore(enemy.x, enemy.y, `+${ENEMY_STOMP_SCORE}`, '#00FF00');
       this.screenShake(3, 100);
+      this.emitStompParticles(enemy.x, enemy.y);
       if (this.audioManager) this.audioManager.playEnemyStomp();
 
       // Check achievements on stomp
@@ -479,6 +513,42 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  emitCoinParticles(x, y) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const p = this.add.circle(x, y, Phaser.Math.Between(2, 4), 0xFFEB3B, 0.9);
+      this.tweens.add({
+        targets: p,
+        x: x + Math.cos(angle) * Phaser.Math.Between(20, 40),
+        y: y + Math.sin(angle) * Phaser.Math.Between(20, 40),
+        alpha: 0, scale: 0,
+        duration: Phaser.Math.Between(200, 400),
+        ease: 'Power2',
+        onComplete: () => p.destroy()
+      });
+    }
+  }
+
+  emitStompParticles(x, y) {
+    for (let i = 0; i < 10; i++) {
+      const p = this.add.circle(
+        x + Phaser.Math.Between(-15, 15),
+        y + Phaser.Math.Between(-10, 10),
+        Phaser.Math.Between(2, 5),
+        Phaser.Math.RND.pick([0xFF5722, 0xFFEB3B, 0xFF9800]), 0.9
+      );
+      this.tweens.add({
+        targets: p,
+        y: p.y - Phaser.Math.Between(20, 50),
+        x: p.x + Phaser.Math.Between(-30, 30),
+        alpha: 0, scale: 0.2,
+        duration: Phaser.Math.Between(300, 500),
+        ease: 'Power2',
+        onComplete: () => p.destroy()
+      });
+    }
+  }
+
   screenShake(intensity = 3, duration = 100) {
     this.cameras.main.shake(duration, intensity / 1000);
   }
@@ -494,6 +564,7 @@ export class GameScene extends Phaser.Scene {
     if (this.deaths === 0 && levelData.par && timeElapsed <= levelData.par) stars = 3;
 
     StorageService.unlockLevel(this.level + 2);
+    StorageService.setLevelStars(this.level, stars);
 
     // Check achievements on level complete
     AchievementService.check({
